@@ -1,9 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore; // Cần thiết cho các phương thức của EF Core như ToListAsync, FindAsync
-using System.Linq; // Để sử dụng .Any()
-using Microsoft.AspNetCore.Http; // Cần thiết cho HttpContext.Session.GetString
-using System.Threading.Tasks; // Cần thiết cho Task
-using BCrypt.Net;
 using BookingToursWeb.Data;
 using BookingToursWeb.Models;
 
