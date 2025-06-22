@@ -1,14 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using BookingToursWeb.Models;
-using BCrypt.Net;
-using System.Linq;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
-using System;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using BookingToursWeb.Data;
-using BookingToursWeb.Models;
 
 namespace BookingToursWeb.Controllers
 {
