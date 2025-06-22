@@ -1,0 +1,23 @@
+﻿@{
+    ViewData["Title"] = "Dashboard Admin";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">@ViewData["Title"]</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        @* Các nút chức năng khác nếu cần *@
+    </div>
+</div>
+
+<p>Đây là trang Dashboard tổng quan của Admin.</p>
+
+@* Hiển thị thông báo sau khi đăng nhập với vai trò admin *@
+@if (TempData["AdminLoginMessage"] != null)
+{
+    <div class="alert alert-info mt-3" role="alert">
+        @TempData["AdminLoginMessage"]
+    </div>
+}
+
+@* Nội dung sẽ được thêm vào sau *@

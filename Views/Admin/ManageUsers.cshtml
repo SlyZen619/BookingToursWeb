@@ -1,0 +1,72 @@
+﻿@model IEnumerable<User>
+
+@{
+    ViewData["Title"] = "Quản lý Tài khoản người dùng";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml"; // Sử dụng layout Admin
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">@ViewData["Title"]</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="AddUser" asp-controller="Admin" class="btn btn-sm btn-outline-secondary">Thêm người dùng mới</a>
+    </div>
+</div>
+
+@* Hiển thị thông báo thành công hoặc lỗi từ TempData *@
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success mt-3" role="alert">
+        @TempData["SuccessMessage"]
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger mt-3" role="alert">
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+
+<p>Đây là trang quản lý các tài khoản người dùng trên hệ thống.</p>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Tên đăng nhập</th>
+            <th>Email</th>
+            <th>Số điện thoại</th>
+            <th>Admin?</th>
+            <th>Hành động</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.Any())
+        {
+            @foreach (var user in Model)
+            {
+                <tr>
+                    <td>@user.Id</td>
+                    <td>@user.Username</td>
+                    <td>@user.Email</td>
+                    <td>@(string.IsNullOrEmpty(user.PhoneNumber) ? "N/A" : user.PhoneNumber)</td>
+                    <td>@(user.IsAdmin ? "Có" : "Không")</td>
+                    <td>
+                        <a asp-action="EditUser" asp-controller="Admin" asp-route-id="@user.Id" class="btn btn-sm btn-primary">Sửa</a>
+                        <form asp-action="DeleteUser" asp-controller="Admin" asp-route-id="@user.Id" method="post" style="display:inline;"
+                              onsubmit="return confirm('Bạn có chắc chắn muốn xóa người dùng này?');">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="6" class="text-center">Không có người dùng nào.</td>
+            </tr>
+        }
+    </tbody>
+</table>

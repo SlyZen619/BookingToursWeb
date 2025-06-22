@@ -1,0 +1,56 @@
+﻿@model User 
+
+@{
+    ViewData["Title"] = "Sửa thông tin người dùng"; // Tiêu đề trang
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml"; // Sử dụng layout Admin
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">@ViewData["Title"]</h1>
+</div>
+
+<h4>Thông tin người dùng</h4>
+<hr />
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="EditUser" method="post">
+            @Html.AntiForgeryToken() @* Rất quan trọng cho form POST, ngăn CSRF *@
+
+            <input type="hidden" asp-for="Id" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Username" class="control-label"></label>
+                <input asp-for="Username" class="form-control" />
+                <span asp-validation-for="Username" class="text-danger"></span>
+            </div>
+            <div class="form-group mb-3">
+                <label asp-for="Email" class="control-label"></label>
+                <input asp-for="Email" class="form-control" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+            <div class="form-group mb-3">
+                <label asp-for="PhoneNumber" class="control-label"></label>
+                <input asp-for="PhoneNumber" class="form-control" />
+                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+            </div>
+            <div class="form-group form-check mb-3">
+                <input class="form-check-input" asp-for="IsAdmin" />
+                <label class="form-check-label" asp-for="IsAdmin"></label>
+                <span asp-validation-for="IsAdmin" class="text-danger"></span>
+            </div>
+            <div class="form-group mb-3">
+                <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                <a asp-action="ManageUsers" class="btn btn-secondary">Hủy bỏ</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        // Đảm bảo các script validation client-side được load
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

@@ -1,0 +1,134 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - BookingToursWeb</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/BookingToursWeb.styles.css" asp-append-version="true" />
+
+    <style>
+        /* Body Styles: Simple background and centering */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5; /* Light grey background for a clean look */
+            display: flex;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+            min-height: 100vh; /* Full viewport height */
+            color: #333;
+        }
+
+        /* Container for the Login/Register Form */
+        .auth-container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 8px; /* Slightly rounded corners */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+            width: 100%;
+            max-width: 420px; /* Optimal width for login/register forms */
+            text-align: center; /* Center content like title, links */
+        }
+
+            .auth-container h1 {
+                font-size: 2em; /* Larger title */
+                margin-bottom: 30px;
+                color: #343a40;
+                font-weight: 600;
+            }
+
+            .auth-container .form-group {
+                margin-bottom: 20px; /* Spacing between form fields */
+                text-align: left; /* Align labels and inputs to the left within the form */
+            }
+
+            .auth-container label {
+                font-weight: 500;
+                margin-bottom: 5px;
+                display: block;
+                color: #555;
+            }
+
+            .auth-container .form-control {
+                width: 100%; /* Full width inputs */
+                padding: 10px 15px; /* Comfortable padding */
+                border: 1px solid #ddd; /* Lighter border */
+                border-radius: 4px; /* Standard rounded input fields */
+                font-size: 1em;
+                transition: border-color 0.2s ease;
+            }
+
+                .auth-container .form-control:focus {
+                    border-color: #007bff; /* Highlight on focus */
+                    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15); /* Lighter shadow on focus */
+                    outline: none;
+                }
+
+            .auth-container .btn-primary {
+                width: 100%;
+                padding: 12px;
+                font-size: 1.05em;
+                font-weight: 600;
+                border-radius: 5px;
+                background-color: #007bff;
+                border-color: #007bff;
+                transition: background-color 0.2s ease, border-color 0.2s ease;
+                margin-top: 10px; /* Space above button */
+            }
+
+                .auth-container .btn-primary:hover {
+                    background-color: #0056b3;
+                    border-color: #0056b3;
+                }
+
+            .auth-container .text-center {
+                margin-top: 25px;
+            }
+
+                .auth-container .text-center p {
+                    margin-bottom: 10px; /* Space between text and links */
+                    color: #777;
+                }
+
+                .auth-container .text-center a {
+                    color: #007bff;
+                    text-decoration: none;
+                    transition: color 0.2s ease;
+                }
+
+                    .auth-container .text-center a:hover {
+                        color: #0056b3;
+                        text-decoration: underline;
+                    }
+
+            /* Validation Summary Styling */
+            .auth-container .validation-summary-errors {
+                color: #dc3545;
+                font-size: 0.9em;
+                margin-bottom: 15px;
+                text-align: left;
+            }
+
+            .auth-container .text-danger {
+                font-size: 0.85em;
+                margin-top: 5px;
+                display: block;
+            }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <main role="main">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

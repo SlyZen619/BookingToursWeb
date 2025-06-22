@@ -1,0 +1,24 @@
+﻿@{
+    ViewData["Title"] = "Trang chủ";
+    Layout = "~/Views/Shared/_Layout.cshtml"; // Đảm bảo đường dẫn này là chính xác
+}
+
+<div class="text-center">
+    <h1 class="display-4">Chào mừng</h1>
+
+    @{
+        // Lấy thông tin username từ Session
+        var username = Context.Session.GetString("Username");
+    }
+
+    @if (!string.IsNullOrEmpty(username)) // Kiểm tra xem username có trong Session không
+    {
+        <p>Xin chào, @username!</p> @* Hiển thị tên người dùng từ Session *@
+    }
+    else
+    {
+        <p>Vui lòng <a asp-controller="Account" asp-action="Login">đăng nhập</a> hoặc <a asp-controller="Account" asp-action="Register">đăng ký</a>.</p>
+    }
+
+    <p>Tìm hiểu thêm về <a href="https://docs.microsoft.com/aspnet/core">xây dựng ứng dụng web với ASP.NET Core</a>.</p>
+</div>

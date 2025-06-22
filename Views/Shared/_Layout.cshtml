@@ -1,0 +1,142 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - BookingToursWeb</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/BookingToursWeb.styles.css" asp-append-version="true" />
+
+    <style>
+        /* Tùy chỉnh Navbar */
+        .navbar-custom {
+            background-color: #007bff; /* Màu xanh dương chủ đạo */
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+            .navbar-custom .navbar-brand,
+            .navbar-custom .nav-link {
+                color: #ffffff; /* Chữ trắng */
+                transition: color 0.3s ease;
+            }
+
+                .navbar-custom .navbar-brand:hover,
+                .navbar-custom .nav-link:hover {
+                    color: #e0e0e0; /* Chữ hơi xám khi hover */
+                }
+
+            .navbar-custom .navbar-toggler {
+                border-color: rgba(255,255,255,.1);
+            }
+
+            .navbar-custom .navbar-toggler-icon {
+                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+            }
+
+        /* Tùy chỉnh nút Admin */
+        .btn-admin-nav {
+            font-size: 0.85rem; /* Kích thước chữ nhỏ hơn */
+            padding: 0.3rem 0.7rem; /* Giảm padding */
+            border-radius: 0.3rem; /* Bo tròn nhẹ */
+            margin-left: 15px; /* Khoảng cách với các mục khác */
+        }
+
+            .btn-admin-nav.btn-outline-light {
+                color: #ffffff;
+                border-color: #ffffff;
+            }
+
+                .btn-admin-nav.btn-outline-light:hover {
+                    background-color: #ffffff;
+                    color: #007bff;
+                }
+
+        /* Main Content Styling */
+        main {
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        /* Footer Styling */
+        footer {
+            background-color: #f8f9fa; /* Màu nền nhẹ cho footer */
+            padding: 15px 0;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+            footer a {
+                color: #007bff;
+                text-decoration: none;
+            }
+
+                footer a:hover {
+                    text-decoration: underline;
+                }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-custom border-bottom box-shadow mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">BookingToursWeb</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav">
+                        @* Nút Admin - chỉ hiển thị nếu là Admin *@
+                        @if (Context.Session.GetString("IsAdmin") == "True")
+                        {
+                            <li class="nav-item">
+                                <a class="btn btn-outline-light btn-admin-nav" asp-area="" asp-controller="Admin" asp-action="Index">Admin Panel</a>
+                            </li>
+                        }
+                        @* CÁC LIÊN KẾT ĐĂNG NHẬP / ĐĂNG XUẤT THỦ CÔNG (KHÔNG DÙNG _LoginPartial) *@
+                        @if (Context.Session.GetInt32("UserId") != null)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Account" asp-action="Logout">Đăng xuất</a>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Account" asp-action="Login">Đăng nhập</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Account" asp-action="Register">Đăng ký</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; 2025 - BookingToursWeb - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

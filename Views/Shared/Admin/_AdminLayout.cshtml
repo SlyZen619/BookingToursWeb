@@ -1,0 +1,97 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Admin Dashboard</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @* CSS riêng cho Admin để làm đẹp sidebar và main content *@
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    @* Feather Icons (để dùng biểu tượng) *@
+    <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body>
+    <header class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top flex-md-nowrap p-0 shadow">
+        <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6 text-white" asp-area="" asp-controller="Admin" asp-action="Index">Admin Panel</a>
+        <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        @* Có thể thêm Search Bar hoặc các yếu tố khác vào đây nếu cần *@
+        <div class="navbar-nav ms-auto">
+            @* ms-auto để đẩy các mục về bên phải *@
+            <ul class="navbar-nav px-3">
+                <li class="nav-item text-nowrap">
+                    <a class="nav-link text-white" href="#">Xin chào, Admin!</a>
+                </li>
+                <li class="nav-item text-nowrap">
+                    <a class="nav-link text-white" asp-area="" asp-controller="Account" asp-action="Logout">Đăng xuất</a>
+                </li>
+            </ul>
+        </div>
+    </header>
+
+    <div class="container-fluid">
+        <div class="row">
+            @* Sidebar Navigation - Start *@
+            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+                <div class="position-sticky pt-3 sidebar-sticky">
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
+                        <span>Quản lý chính</span>
+                    </h6>
+                    <ul class="nav flex-column mb-2">
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Action"].ToString() == "Index" ? "active" : "")" aria-current="page" asp-area="" asp-controller="Admin" asp-action="Index">
+                                <span data-feather="home" class="align-text-bottom"></span>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Action"].ToString() == "ManageAppointments" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManageAppointments">
+                                <span data-feather="calendar" class="align-text-bottom"></span>
+                                Quản lý Lịch hẹn
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Action"].ToString() == "ManageMenus" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManageMenus">
+                                <span data-feather="list" class="align-text-bottom"></span>
+                                Quản lý Menu
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Action"].ToString() == "ManageUsers" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManageUsers">
+                                <span data-feather="users" class="align-text-bottom"></span>
+                                Quản lý Tài khoản người dùng
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Action"].ToString() == "ManagePosts" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManagePosts">
+                                <span data-feather="file-text" class="align-text-bottom"></span>
+                                Quản lý Bài đăng
+                            </a>
+                        </li>
+                    </ul>
+
+                    @* ĐÃ LOẠI BỎ PHẦN THỐNG KÊ & BÁO CÁO *@
+                </div>
+            </nav>
+            @* Sidebar Navigation - End *@
+
+            @* Main Content *@
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/admin.js" asp-append-version="true"></script>
+    @* Feather Icons Init Script *@
+    <script>
+        feather.replace();
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
