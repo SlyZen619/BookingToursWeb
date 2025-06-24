@@ -74,6 +74,24 @@
                 footer a:hover {
                     text-decoration: underline;
                 }
+        /* Style cho các mục trong dropdown nếu cần */
+        .dropdown-item {
+            color: #343a40; /* Màu chữ mặc định */
+        }
+
+            .dropdown-item:hover {
+                background-color: #f8f9fa; /* Nền nhẹ khi hover */
+                color: #007bff; /* Màu chữ khi hover */
+            }
+
+        .btn-admin-nav-dropdown {
+            color: #007bff; /* Màu chữ xanh cho nút admin trong dropdown */
+            font-weight: bold;
+        }
+
+            .btn-admin-nav-dropdown:hover {
+                background-color: #e6f2ff; /* Nền xanh nhạt khi hover */
+            }
     </style>
 </head>
 <body>
@@ -95,27 +113,38 @@
                         </li>
                     </ul>
                     <ul class="navbar-nav">
-                        @* Nút Admin - chỉ hiển thị nếu là Admin *@
-                        @if (Context.Session.GetString("IsAdmin") == "True")
-                        {
-                            <li class="nav-item">
-                                <a class="btn btn-outline-light btn-admin-nav" asp-area="" asp-controller="Admin" asp-action="Index">Admin Panel</a>
-                            </li>
-                        }
-                        @* CÁC LIÊN KẾT ĐĂNG NHẬP / ĐĂNG XUẤT THỦ CÔNG (KHÔNG DÙNG _LoginPartial) *@
+                        @* Kiểm tra xem người dùng đã đăng nhập chưa bằng Session *@
                         @if (Context.Session.GetInt32("UserId") != null)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Account" asp-action="Logout">Đăng xuất</a>
+                            <li class="nav-item dropdown">
+                                @* Thêm class "dropdown" *@
+                                <a class="nav-link dropdown-toggle text-light" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Xin chào, @Context.Session.GetString("Username")! @* Hiển thị tên người dùng đã đăng nhập *@
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                    @* Thêm dropdown-menu-end để menu xổ ra bên phải *@
+                                    @* Nút Admin Panel - chỉ hiển thị nếu là Admin *@
+                                    @if (Context.Session.GetString("IsAdmin") == "True")
+                                    {
+                                        <li>
+                                            <a class="dropdown-item btn-admin-nav-dropdown" asp-area="" asp-controller="Admin" asp-action="Index">Admin Panel</a>
+                                        </li>
+                                    }
+                                    <li><hr class="dropdown-divider"></li> @* Đường phân cách *@
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Account" asp-action="Logout">Đăng xuất</a>
+                                    </li>
+                                </ul>
                             </li>
                         }
                         else
                         {
+                            @* CÁC LIÊN KẾT ĐĂNG NHẬP / ĐĂNG KÝ NẾU CHƯA ĐĂNG NHẬP *@
                             <li class="nav-item">
-                                <a class="nav-link" asp-controller="Account" asp-action="Login">Đăng nhập</a>
+                                <a class="nav-link text-light" asp-controller="Account" asp-action="Login">Đăng nhập</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" asp-controller="Account" asp-action="Register">Đăng ký</a>
+                                <a class="nav-link text-light" asp-controller="Account" asp-action="Register">Đăng ký</a>
                             </li>
                         }
                     </ul>
@@ -129,11 +158,8 @@
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - BookingToursWeb - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
+    <partial name="_FooterPartial" />
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
