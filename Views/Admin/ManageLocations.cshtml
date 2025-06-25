@@ -1,0 +1,80 @@
+﻿@model IEnumerable<BookingToursWeb.Models.Location>
+
+@{
+    ViewData["Title"] = "Quản lý Địa điểm";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml"; // Giữ nguyên layout bạn đã chỉ định
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<p>
+    <a asp-action="AddLocation" class="btn btn-primary">Thêm Địa điểm mới</a>
+</p>
+
+@* Hiển thị thông báo thành công hoặc lỗi từ TempData *@
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Danh sách Địa điểm</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>@Html.DisplayNameFor(model => model.Name)</th>
+                        <th>@Html.DisplayNameFor(model => model.Address)</th>
+                        <th>@Html.DisplayNameFor(model => model.TicketPrice)</th>
+                        <th>@Html.DisplayNameFor(model => model.OpeningHours)</th>
+                        <th>@Html.DisplayNameFor(model => model.IsActive)</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.Id</td>
+                            <td>@item.Name</td>
+                            <td>@item.Address</td>
+                            <td>@(item.TicketPrice.HasValue? item.TicketPrice.Value.ToString("N0") + " VNĐ" : "Miễn phí")</td>
+                            <td>@item.OpeningHours</td>
+                            <td>@(item.IsActive ? "Có" : "Không")</td>
+                            <td>
+                                <a asp-action="EditLocation" asp-route-id="@item.Id" class="btn btn-info btn-sm">Sửa</a>
+                                <form asp-action="DeleteLocation" asp-route-id="@item.Id" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa địa điểm này?');">
+                                    <button type="submit" class="btn btn-danger btn-sm">Xóa</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Ví dụ khởi tạo DataTables:
+            // $('#dataTable').DataTable();
+            // Đảm bảo bạn đã nhúng các thư viện JS của DataTables trong _AdminLayout.cshtml hoặc ở đây.
+        });
+    </script>
+}

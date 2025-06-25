@@ -1,0 +1,66 @@
+﻿@model BookingToursWeb.Models.Location
+
+@{
+    ViewData["Title"] = "Thêm Địa điểm mới";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<hr />
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="AddLocation">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Address" class="form-label"></label>
+                <input asp-for="Address" class="form-control" />
+                <span asp-validation-for="Address" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="TicketPrice" class="form-label"></label>
+                <input asp-for="TicketPrice" class="form-control" type="number" step="0.01" />
+                <span asp-validation-for="TicketPrice" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="OpeningHours" class="form-label"></label>
+                <input asp-for="OpeningHours" class="form-control" />
+                <span asp-validation-for="OpeningHours" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="ImageUrl" class="form-label"></label>
+                <input asp-for="ImageUrl" class="form-control" />
+                <span asp-validation-for="ImageUrl" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="ContactInfo" class="form-label"></label>
+                <input asp-for="ContactInfo" class="form-control" />
+                <span asp-validation-for="ContactInfo" class="text-danger"></span>
+            </div>
+            <div class="mb-3 form-check">
+                <input class="form-check-input" asp-for="IsActive" />
+                <label class="form-check-label" asp-for="IsActive"></label>
+            </div>
+            <div class="mb-3">
+                <input type="submit" value="Thêm mới" class="btn btn-primary" />
+                <a asp-action="ManageLocations" class="btn btn-secondary">Quay lại danh sách</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
