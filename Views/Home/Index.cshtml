@@ -1,9 +1,11 @@
-﻿@{
+﻿@model BookingToursWeb.Models.HomeViewModel
+
+@{
     ViewData["Title"] = "Trang chủ";
-    Layout = "~/Views/Shared/_Layout.cshtml"; // Đảm bảo đường dẫn này là chính xác
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="text-center">
+<div class="text-center py-4">
     <h1 class="display-4">Chào mừng</h1>
 
     @{
@@ -11,9 +13,9 @@
         var username = Context.Session.GetString("Username");
     }
 
-    @if (!string.IsNullOrEmpty(username)) // Kiểm tra xem username có trong Session không
+    @if (!string.IsNullOrEmpty(username))
     {
-        <p>Xin chào, @username!</p> @* Hiển thị tên người dùng từ Session *@
+        <p>Xin chào, @username!</p>
     }
     else
     {
@@ -22,3 +24,44 @@
 
     <p>Tìm hiểu thêm về <a href="https://docs.microsoft.com/aspnet/core">xây dựng ứng dụng web với ASP.NET Core</a>.</p>
 </div>
+
+<section class="famous-places-section py-5">
+    <div class="container">
+        <h2 class="text-center mb-4">Tất cả Địa điểm</h2> <p class="text-center text-muted mb-5">Được thêm vào hệ thống</p>
+
+        @if (Model != null && Model.FamousPlaces != null && Model.FamousPlaces.Any())
+        {
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                @foreach (var place in Model.FamousPlaces)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            @if (!string.IsNullOrEmpty(place.ImageUrl))
+                            {
+                                <img src="@place.ImageUrl" class="card-img-top" alt="@place.Name" style="height: 200px; object-fit: cover;">
+                            }
+                            else
+                            {
+                                <img src="/images/placeholder.jpg" class="card-img-top" alt="No Image" style="height: 200px; object-fit: cover;">
+                            }
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title text-center">@place.Name</h5>
+                                <p class="card-text text-center text-muted">@place.Description</p>
+                                <div class="mt-auto text-center">
+                                    <a asp-controller="Home" asp-action="PlaceDetails" asp-route-id="@place.Id" class="btn btn-outline-primary mt-3">Khám phá</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-center">Chưa có địa điểm nào được thêm vào hệ thống.</p>
+        }
+    </div>
+</section>
+
+@section Scripts {
+}
