@@ -267,12 +267,12 @@
 
         <div class="navbar-nav ms-auto">
             <ul class="navbar-nav px-3">
-                @* Dropdown menu cho "Xin chào, Admin!" *@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle text-white" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Xin chào, Admin!
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                        <li><a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Index">Quay về Trang chủ</a></li>
                         <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="Logout">Đăng xuất</a></li>
                     </ul>
                 </li>
