@@ -158,11 +158,11 @@ namespace BookingToursWeb.Controllers
                 return RedirectToAction("Index", "Home");
             }
             ViewData["Title"] = "Quản lý Địa điểm";
-            var locations = await _context.Locations.ToListAsync(); // Lấy tất cả địa điểm
+            var locations = await _context.Locations.ToListAsync();
             return View(locations);
         }
 
-        // GET: Admin/AddLocation (Hiển thị form thêm địa điểm mới)
+        // GET: Admin/AddLocation (Hiển thị form thêm địa điểm mới) - Giữ nguyên
         [HttpGet]
         public IActionResult AddLocation()
         {
@@ -178,7 +178,8 @@ namespace BookingToursWeb.Controllers
         // POST: Admin/AddLocation (Xử lý thêm địa điểm mới)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddLocation([Bind("Name,Description,Address,TicketPrice,OpeningHours,ImageUrl,ContactInfo,IsActive")] Location location)
+        // CẬP NHẬT DANH SÁCH THUỘC TÍNH TRONG [Bind] để thêm "Information"
+        public async Task<IActionResult> AddLocation([Bind("Name,Description,Information,Address,TicketPrice,OpeningHours,ImageUrl,ContactInfo,IsActive")] Location location)
         {
             if (!IsCurrentUserAdmin())
             {
@@ -188,7 +189,6 @@ namespace BookingToursWeb.Controllers
 
             if (ModelState.IsValid)
             {
-                // Kiểm tra trùng lặp tên địa điểm (tùy chọn)
                 if (await _context.Locations.AnyAsync(l => l.Name == location.Name))
                 {
                     ModelState.AddModelError("Name", "Tên địa điểm này đã tồn tại.");
@@ -205,7 +205,7 @@ namespace BookingToursWeb.Controllers
             return View(location);
         }
 
-        // GET: Admin/EditLocation/{id} (Hiển thị form sửa địa điểm)
+        // GET: Admin/EditLocation/{id} (Hiển thị form sửa địa điểm) - Giữ nguyên
         [HttpGet]
         public async Task<IActionResult> EditLocation(int? id)
         {
@@ -233,7 +233,8 @@ namespace BookingToursWeb.Controllers
         // POST: Admin/EditLocation/{id} (Xử lý sửa địa điểm)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditLocation(int id, [Bind("Id,Name,Description,Address,TicketPrice,OpeningHours,ImageUrl,ContactInfo,IsActive")] Location location)
+        // CẬP NHẬT DANH SÁCH THUỘC TÍNH TRONG [Bind] để thêm "Information"
+        public async Task<IActionResult> EditLocation(int id, [Bind("Id,Name,Description,Information,Address,TicketPrice,OpeningHours,ImageUrl,ContactInfo,IsActive")] Location location)
         {
             if (!IsCurrentUserAdmin())
             {
@@ -252,7 +253,6 @@ namespace BookingToursWeb.Controllers
             {
                 try
                 {
-                    // Kiểm tra trùng lặp tên địa điểm với các địa điểm KHÁC
                     if (_context.Locations.Any(l => l.Name == location.Name && l.Id != location.Id))
                     {
                         ModelState.AddModelError("Name", "Tên địa điểm này đã tồn tại.");
@@ -279,7 +279,7 @@ namespace BookingToursWeb.Controllers
             return View(location);
         }
 
-        // POST: Admin/DeleteLocation/{id} (Xử lý xóa địa điểm)
+        // POST: Admin/DeleteLocation/{id} (Xử lý xóa địa điểm) - Giữ nguyên
         [HttpPost, ActionName("DeleteLocation")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteLocationConfirmed(int id)
