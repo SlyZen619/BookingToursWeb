@@ -3,6 +3,8 @@ using BookingToursWeb.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using BookingToursWeb.Data;
+using Microsoft.AspNetCore.Http; // Thêm namespace này để sử dụng Session
+using System; // Thêm namespace này cho StringComparison
 
 namespace BookingToursWeb.Controllers
 {
@@ -19,18 +21,18 @@ namespace BookingToursWeb.Controllers
         [AllowAnonymous]
         public IActionResult Register()
         {
+            ViewData["Title"] = "Đăng ký tài khoản";
             return View();
         }
 
         // POST: Account/Register
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [AllowAnonymous]// Quan trọng để ngăn chặn CSRF attacks
+        [AllowAnonymous]
         public async Task<IActionResult> Register(RegisterViewModel model)
         {
             if (ModelState.IsValid)
             {
-                // 1. Kiểm tra tên đăng nhập và email đã tồn tại chưa
                 if (_context.Users.Any(u => u.Username == model.Username))
                 {
                     ModelState.AddModelError("Username", "Tên đăng nhập này đã tồn tại.");
@@ -43,29 +45,25 @@ namespace BookingToursWeb.Controllers
                     return View(model);
                 }
 
-                // 2. Hash mật khẩu trước khi lưu
                 string hashedPassword = BCrypt.Net.BCrypt.HashPassword(model.Password);
 
-                // 3. Tạo đối tượng User từ RegisterViewModel
                 var newUser = new User
                 {
                     Username = model.Username,
                     Email = model.Email,
                     PhoneNumber = model.PhoneNumber,
                     PasswordHash = hashedPassword,
-                    IsAdmin = false // Mặc định là người dùng thường khi đăng ký
+                    IsAdmin = false
                 };
 
-                // 4. Thêm User vào DbContext và lưu vào CSDL
                 _context.Users.Add(newUser);
-                await _context.SaveChangesAsync(); // Lưu thay đổi bất đồng bộ
+                await _context.SaveChangesAsync();
 
-                // 5. Chuyển hướng người dùng về trang đăng nhập sau khi đăng ký thành công
                 TempData["SuccessMessage"] = "Đăng ký thành công! Vui lòng đăng nhập.";
                 return RedirectToAction("Login", "Account");
             }
 
-            // Nếu ModelState không hợp lệ (lỗi validation từ RegisterViewModel), hiển thị lại View với các lỗi
+            ViewData["Title"] = "Đăng ký tài khoản";
             return View(model);
         }
 
@@ -73,7 +71,7 @@ namespace BookingToursWeb.Controllers
         [AllowAnonymous]
         public IActionResult Login()
         {
-            // Hiển thị thông báo thành công nếu có từ TempData
+            ViewData["Title"] = "Đăng nhập";
             if (TempData["SuccessMessage"] != null)
             {
                 ViewBag.SuccessMessage = TempData["SuccessMessage"];
@@ -85,42 +83,30 @@ namespace BookingToursWeb.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [AllowAnonymous]
-        public IActionResult Login(string username, string password)
+        public async Task<IActionResult> Login(string username, string password)
         {
-            // 1. Tìm người dùng theo tên đăng nhập (hoặc email)
-            var user = _context.Users.FirstOrDefault(u => u.Username == username || u.Email == username);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username || u.Email == username);
 
             if (user == null)
             {
                 ModelState.AddModelError("", "Tên đăng nhập hoặc mật khẩu không đúng.");
+                ViewData["Title"] = "Đăng nhập";
                 return View();
             }
 
-            // 2. Xác minh mật khẩu
             bool isPasswordCorrect = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
 
             if (!isPasswordCorrect)
             {
                 ModelState.AddModelError("", "Tên đăng nhập hoặc mật khẩu không đúng.");
+                ViewData["Title"] = "Đăng nhập";
                 return View();
             }
 
-            // 3. Đăng nhập thành công!
-            // Thiết lập phiên đăng nhập (Sử dụng Session cho mục đích đơn giản hóa,
-            // trong thực tế nên dùng ASP.NET Core Identity hoặc Claims-based Authentication)
-
-            // Lưu User Id và Username vào Session
             HttpContext.Session.SetInt32("UserId", user.Id);
             HttpContext.Session.SetString("Username", user.Username);
-
-            // Lưu trạng thái Admin vào Session dưới dạng chuỗi "True" hoặc "False"
+            HttpContext.Session.SetString("Email", user.Email);
             HttpContext.Session.SetString("IsAdmin", user.IsAdmin.ToString());
-
-
-            // 4. Chuyển hướng người dùng:
-            // Cả admin và người dùng thường đều được chuyển hướng về trang chủ ("Home/Index")
-            // Nút điều hướng đến Admin Panel sẽ được hiển thị trên trang chủ
-            // nếu người dùng là Admin (được kiểm tra trong View bằng Session).
 
             if (user.IsAdmin)
             {
@@ -131,20 +117,14 @@ namespace BookingToursWeb.Controllers
                 TempData["UserLoginMessage"] = $"Chào mừng {user.Username}!";
             }
 
-            // Chuyển hướng về trang chủ (Home/Index)
             return RedirectToAction("Index", "Home");
         }
 
         // GET: Account/Logout - Xử lý đăng xuất
         public IActionResult Logout()
         {
-            // Xóa tất cả các biến Session
             HttpContext.Session.Clear();
-
-            // Hiển thị thông báo đăng xuất thành công
             TempData["SuccessMessage"] = "Bạn đã đăng xuất thành công.";
-
-            // Chuyển hướng về trang đăng nhập
             return RedirectToAction("Login", "Account");
         }
 
@@ -152,6 +132,7 @@ namespace BookingToursWeb.Controllers
         [AllowAnonymous]
         public IActionResult ForgotPassword()
         {
+            ViewData["Title"] = "Quên mật khẩu";
             return View();
         }
 
@@ -163,6 +144,7 @@ namespace BookingToursWeb.Controllers
         {
             if (!ModelState.IsValid)
             {
+                ViewData["Title"] = "Quên mật khẩu";
                 return View(model);
             }
 
@@ -170,13 +152,11 @@ namespace BookingToursWeb.Controllers
 
             if (user == null)
             {
-                // Vẫn giữ thông báo chung chung để không tiết lộ email tồn tại hay không
                 ModelState.AddModelError("", "Email không tồn tại trong hệ thống.");
+                ViewData["Title"] = "Quên mật khẩu";
                 return View(model);
             }
 
-            // Nếu email tồn tại, chuyển hướng đến trang ResetPassword
-            // Chúng ta truyền email qua TempData để dùng ở trang ResetPassword
             TempData["UserEmailForReset"] = model.Email;
             return RedirectToAction(nameof(ResetPassword));
         }
@@ -185,17 +165,15 @@ namespace BookingToursWeb.Controllers
         [AllowAnonymous]
         public IActionResult ResetPassword()
         {
-            // Lấy email từ TempData (do ForgotPassword POST chuyển hướng tới)
+            ViewData["Title"] = "Đặt lại mật khẩu";
             string? userEmail = TempData["UserEmailForReset"] as string;
 
             if (string.IsNullOrEmpty(userEmail))
             {
-                // Nếu không có email (người dùng truy cập trực tiếp), quay lại trang ForgotPassword
                 TempData["ErrorMessage"] = "Vui lòng nhập email của bạn trước.";
                 return RedirectToAction(nameof(ForgotPassword));
             }
 
-            // Tạo ViewModel với email đã nhận được
             var model = new ResetPasswordViewModel { Email = userEmail };
             return View(model);
         }
@@ -208,27 +186,118 @@ namespace BookingToursWeb.Controllers
         {
             if (!ModelState.IsValid)
             {
-                // Nếu ModelState không hợp lệ, giữ nguyên email đã truyền
-                // Để form hiển thị lại đúng email
-                TempData["UserEmailForReset"] = model.Email; // Lưu lại để dùng nếu View bị hiển thị lại
+                TempData["UserEmailForReset"] = model.Email;
+                ViewData["Title"] = "Đặt lại mật khẩu";
                 return View(model);
             }
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
 
-            // Kiểm tra lại người dùng có tồn tại không (phòng trường hợp người dùng chỉnh sửa form)
             if (user == null)
             {
                 ModelState.AddModelError("", "Tài khoản không tồn tại.");
+                ViewData["Title"] = "Đặt lại mật khẩu";
                 return View(model);
             }
 
-            // Hash mật khẩu mới và cập nhật vào DB
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Mật khẩu của bạn đã được đặt lại thành công! Vui lòng đăng nhập.";
             return RedirectToAction(nameof(Login));
+        }
+
+        // GET: Account/EditProfile
+        public async Task<IActionResult> EditProfile()
+        {
+            ViewData["Title"] = "Chỉnh sửa Profile";
+
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (userId == null)
+            {
+                TempData["ErrorMessage"] = "Bạn cần đăng nhập để chỉnh sửa thông tin cá nhân.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            var user = await _context.Users.FindAsync(userId.Value);
+            if (user == null)
+            {
+                TempData["ErrorMessage"] = "Không tìm thấy thông tin người dùng.";
+                return RedirectToAction("Index", "Home");
+            }
+
+            var model = new EditProfileViewModel
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber
+            };
+
+            return View(model);
+        }
+
+        // POST: Account/EditProfile
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditProfile(EditProfileViewModel model)
+        {
+            ViewData["Title"] = "Chỉnh sửa Profile";
+
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (userId == null || userId.Value != model.Id)
+            {
+                TempData["ErrorMessage"] = "Phiên làm việc không hợp lệ hoặc bạn không có quyền chỉnh sửa.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            if (ModelState.IsValid)
+            {
+                var userToUpdate = await _context.Users.FindAsync(model.Id);
+                if (userToUpdate == null)
+                {
+                    TempData["ErrorMessage"] = "Người dùng không tồn tại.";
+                    return RedirectToAction("Index", "Home");
+                }
+
+                // --- LOGIC MỚI ĐỂ XỬ LÝ USERNAME ---
+                // Chỉ kiểm tra và cập nhật Username nếu nó đã thay đổi
+                if (!string.Equals(userToUpdate.Username, model.Username, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Kiểm tra Username mới đã tồn tại cho người dùng khác chưa
+                    if (await _context.Users.AnyAsync(u => u.Username == model.Username && u.Id != model.Id))
+                    {
+                        ModelState.AddModelError("Username", "Tên tài khoản này đã được sử dụng bởi người khác.");
+                        return View(model);
+                    }
+                    userToUpdate.Username = model.Username; // Cập nhật Username
+                }
+                // --- KẾT THÚC LOGIC USERNAME ---
+
+
+                // Kiểm tra Email đã tồn tại cho người dùng khác chưa (logic cũ, vẫn giữ)
+                if (!string.Equals(userToUpdate.Email, model.Email, StringComparison.OrdinalIgnoreCase) &&
+                    await _context.Users.AnyAsync(u => u.Email == model.Email && u.Id != model.Id))
+                {
+                    ModelState.AddModelError("Email", "Email này đã được sử dụng bởi tài khoản khác.");
+                    return View(model);
+                }
+                userToUpdate.Email = model.Email; // Cập nhật Email
+
+                userToUpdate.PhoneNumber = model.PhoneNumber; // Cập nhật SĐT
+
+                _context.Update(userToUpdate);
+                await _context.SaveChangesAsync();
+
+                // Cập nhật lại Session nếu Username hoặc Email thay đổi
+                HttpContext.Session.SetString("Username", userToUpdate.Username); // Cập nhật Username trong Session
+                HttpContext.Session.SetString("Email", userToUpdate.Email); // Cập nhật Email trong Session
+
+                TempData["SuccessMessage"] = "Thông tin profile đã được cập nhật thành công.";
+                return RedirectToAction("Profile", "Home");
+            }
+
+            return View(model);
         }
     }
 }

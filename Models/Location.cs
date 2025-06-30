@@ -31,6 +31,7 @@ namespace BookingToursWeb.Models
         [Display(Name = "Địa chỉ")]
         public string Address { get; set; }
 
+        [Required(ErrorMessage = "Gía vé không được để trống.")]
         [Column(TypeName = "decimal(18, 2)")]
         [Range(0, 9999999999999999.99, ErrorMessage = "Giá vé phải là số không âm.")]
         [Display(Name = "Giá vé")]

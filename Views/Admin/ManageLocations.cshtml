@@ -5,11 +5,12 @@
     Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml"; // Giữ nguyên layout bạn đã chỉ định
 }
 
-<h1>@ViewData["Title"]</h1>
-
-<p>
-    <a asp-action="AddLocation" class="btn btn-primary">Thêm Địa điểm mới</a>
-</p>
+<div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">@ViewData["Title"]</h1> 
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="AddLocation" class="btn btn-primary">Thêm Địa điểm mới</a>
+    </div>
+</div>
 
 @* Hiển thị thông báo thành công hoặc lỗi từ TempData *@
 @if (TempData["SuccessMessage"] != null)

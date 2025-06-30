@@ -1,0 +1,150 @@
+﻿@model BookingToursWeb.Models.Booking
+
+@{
+    ViewData["Title"] = "Thêm Lịch hẹn mới";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Thêm Lịch hẹn mới</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="ManageAppointments">Quản lý Lịch hẹn</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Thêm Lịch hẹn</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="AddAppointment" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="UserId" class="control-label"></label>
+                <select asp-for="UserId" class="form-control" asp-items="@(new SelectList(ViewBag.Users, "Id", "Username"))">
+                    <option value="">-- Chọn Người Dùng --</option>
+                </select>
+                <span asp-validation-for="UserId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LocationId" class="control-label"></label>
+                <select asp-for="LocationId" class="form-control" asp-items="@(new SelectList(ViewBag.Locations, "Id", "Name"))">
+                    <option value="">-- Chọn Địa Điểm --</option>
+                </select>
+                <span asp-validation-for="LocationId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AppointmentDate" class="control-label"></label>
+                @* THAY ĐỔI: Thêm id để dễ dàng thao tác bằng JavaScript *@
+                <input asp-for="AppointmentDate" type="datetime-local" class="form-control" id="AppointmentDateInput" />
+                <span asp-validation-for="AppointmentDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="NumberOfVisitors" class="control-label"></label>
+                <input asp-for="NumberOfVisitors" class="form-control" />
+                <span asp-validation-for="NumberOfVisitors" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TotalAmount" class="control-label"></label>
+                <input asp-for="TotalAmount" class="form-control" readonly />
+                <span asp-validation-for="TotalAmount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Status" class="control-label"></label>
+                <select asp-for="Status" class="form-control">
+                    <option value="Pending">Pending</option>
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="Cancelled">Cancelled</option>
+                    <option value="Completed">Completed</option>
+                </select>
+                <span asp-validation-for="Status" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SpecialNotes" class="control-label"></label>
+                <textarea asp-for="SpecialNotes" class="form-control"></textarea>
+                <span asp-validation-for="SpecialNotes" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Thêm Lịch hẹn" class="btn btn-primary" />
+                <a asp-action="ManageAppointments" class="btn btn-secondary">Hủy</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        // Hàm để định dạng ngày giờ cho input type="datetime-local"
+        function formatDateTimeLocal(date) {
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        $(document).ready(function() {
+            var appointmentDateInput = $('#AppointmentDateInput'); // SỬ DỤNG ID MỚI
+
+            // Lấy thời điểm hiện tại
+            const now = new Date();
+            // Thiết lập giá trị min cho input datetime-local là thời điểm hiện tại
+            // Trình duyệt sẽ tự động ngăn người dùng chọn ngày/giờ trước min này.
+            const minDateTime = formatDateTimeLocal(now);
+            appointmentDateInput.attr('min', minDateTime);
+
+            // Kiểm tra và đặt giá trị ban đầu cho input
+            // Nếu không có giá trị (trường hợp thêm mới), đặt là thời điểm hiện tại.
+            // Nếu có giá trị (trường hợp lỗi validation và form được render lại),
+            // kiểm tra xem giá trị đó có phải là quá khứ không, nếu có thì đặt lại là hiện tại.
+            var currentInputValue = appointmentDateInput.val();
+            if (!currentInputValue) {
+                appointmentDateInput.val(minDateTime);
+            } else {
+                var dateFromModel = new Date(currentInputValue);
+                // So sánh giá trị từ model với thời điểm hiện tại
+                if (dateFromModel < now) {
+                    appointmentDateInput.val(minDateTime);
+                } else {
+                    // Nếu giá trị từ model hợp lệ (hiện tại hoặc tương lai), chỉ cần định dạng lại cho đúng chuẩn
+                    appointmentDateInput.val(formatDateTimeLocal(dateFromModel));
+                }
+            }
+
+
+            // Logic tính TotalAmount (giữ nguyên, không thay đổi)
+            $('#NumberOfVisitors, #LocationId').on('change', function() {
+                var numberOfVisitors = parseInt($('#NumberOfVisitors').val() || '0');
+                var locationId = $('#LocationId').val();
+
+                if (numberOfVisitors > 0 && locationId) {
+                    $.ajax({
+                        url: '/api/locations/' + locationId,
+                        type: 'GET',
+                        success: function(location) {
+                            if (location && location.ticketPrice !== undefined) {
+                                var totalAmount = numberOfVisitors * parseFloat(location.ticketPrice);
+                                $('#TotalAmount').val(totalAmount.toFixed(2));
+                            } else {
+                                $('#TotalAmount').val('0.00');
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            $('#TotalAmount').val('0.00');
+                            console.error('Không thể lấy thông tin địa điểm: ' + error);
+                        }
+                    });
+                } else {
+                    $('#TotalAmount').val('0.00');
+                }
+            }).trigger('change');
+        });
+    </script>
+}

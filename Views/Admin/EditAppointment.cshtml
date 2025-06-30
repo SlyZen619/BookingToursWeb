@@ -1,0 +1,147 @@
+﻿@model BookingToursWeb.Models.Booking
+
+@{
+    ViewData["Title"] = "Sửa thông tin Lịch hẹn";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Sửa thông tin Lịch hẹn</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="ManageAppointments">Quản lý Lịch hẹn</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Sửa Lịch hẹn</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="EditAppointment" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            @* Giữ lại CreatedAt để không bị mất khi POST. Vì nó non-nullable, cần đảm bảo có giá trị. *@
+            <input type="hidden" asp-for="CreatedAt" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="UserId" class="control-label"></label>
+                <select asp-for="UserId" class="form-control" asp-items="@(new SelectList(ViewBag.Users, "Id", "Username", Model.UserId))">
+                </select>
+                <span asp-validation-for="UserId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LocationId" class="control-label"></label>
+                <select asp-for="LocationId" class="form-control" asp-items="@(new SelectList(ViewBag.Locations, "Id", "Name", Model.LocationId))">
+                </select>
+                <span asp-validation-for="LocationId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AppointmentDate" class="control-label"></label>
+                @* THAY ĐỔI: Thêm id để dễ dàng thao tác bằng JavaScript *@
+                <input asp-for="AppointmentDate" type="datetime-local" class="form-control" id="EditAppointmentDateInput" />
+                <span asp-validation-for="AppointmentDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="NumberOfVisitors" class="control-label"></label>
+                <input asp-for="NumberOfVisitors" class="form-control" />
+                <span asp-validation-for="NumberOfVisitors" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TotalAmount" class="control-label"></label>
+                <input asp-for="TotalAmount" class="form-control" readonly />
+                <span asp-validation-for="TotalAmount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Status" class="control-label"></label>
+                <select asp-for="Status" class="form-control">
+                    <option value="Pending">Pending</option>
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="Cancelled">Cancelled</option>
+                    <option value="Completed">Completed</option>
+                </select>
+                <span asp-validation-for="Status" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SpecialNotes" class="control-label"></label>
+                <textarea asp-for="SpecialNotes" class="form-control"></textarea>
+                <span asp-validation-for="SpecialNotes" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Lưu thay đổi" class="btn btn-primary" />
+                <a asp-action="ManageAppointments" class="btn btn-secondary">Hủy</a>
+            </div>
+        </form>
+        <form asp-action="DeleteAppointment" asp-route-id="@Model.Id" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa lịch hẹn này không?');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-danger">Xóa lịch hẹn</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        function formatDateTimeLocal(date) {
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        $(document).ready(function() {
+            var appointmentDateInput = $('#EditAppointmentDateInput'); // SỬ DỤNG ID MỚI
+
+            // Lấy thời điểm hiện tại
+            const now = new Date();
+            // Định dạng thời điểm hiện tại để đặt làm giới hạn MIN
+            const minDateTime = formatDateTimeLocal(now);
+
+            // Đặt thuộc tính min cho input datetime-local
+            // Điều này sẽ ngăn người dùng chọn ngày/giờ trong quá khứ từ bộ chọn của trình duyệt.
+            appointmentDateInput.attr('min', minDateTime);
+
+            // Lấy giá trị hiện tại của input từ Model
+            var currentModelDateString = "@(Model.AppointmentDate.ToString("yyyy-MM-ddTHH:mm"))"; // Định dạng từ C#
+            if (currentModelDateString) {
+                var modelDate = new Date(currentModelDateString);
+                // Định dạng lại giá trị từ Model để hiển thị chính xác trong input datetime-local
+                appointmentDateInput.val(formatDateTimeLocal(modelDate));
+            }
+
+
+            // Logic tính TotalAmount (giữ nguyên, không thay đổi)
+            $('#NumberOfVisitors, #LocationId').on('change', function() {
+                var numberOfVisitors = parseInt($('#NumberOfVisitors').val() || '0');
+                var locationId = $('#LocationId').val();
+
+                if (numberOfVisitors > 0 && locationId) {
+                    $.ajax({
+                        url: '/api/locations/' + locationId,
+                        type: 'GET',
+                        success: function(location) {
+                            if (location && location.ticketPrice !== undefined) {
+                                var totalAmount = numberOfVisitors * parseFloat(location.ticketPrice);
+                                $('#TotalAmount').val(totalAmount.toFixed(2));
+                            } else {
+                                $('#TotalAmount').val('0.00');
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            $('#TotalAmount').val('0.00');
+                            console.error('Không thể lấy thông tin địa điểm: ' + error);
+                        }
+                    });
+                } else {
+                    $('#TotalAmount').val('0.00');
+                }
+            }).trigger('change');
+        });
+    </script>
+}

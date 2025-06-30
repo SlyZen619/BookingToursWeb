@@ -10,12 +10,12 @@ namespace BookingToursWeb.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-        [Required]
-        [Display(Name = "Mã Người Dùng")]
+        [Required(ErrorMessage = "Tên địa điểm không được để trống.")]
+        [Display(Name = "Tên Người Dùng")]
         public int UserId { get; set; } // Khóa ngoại cho User
 
-        [Required]
-        [Display(Name = "Mã Địa Điểm")]
+        [Required(ErrorMessage = "Tên địa điểm không được để trống.")]
+        [Display(Name = "Tên Địa Điểm")]
         public int LocationId { get; set; } // Khóa ngoại cho Location
 
         [Required(ErrorMessage = "Ngày hẹn không được để trống.")]

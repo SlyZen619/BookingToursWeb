@@ -23,9 +23,9 @@
         :root {
             --sidebar-width: 250px;
             --header-height: 56px;
-            --hamburger-button-size: 36px; /* Kích thước nút hamburger */
-            --hamburger-margin-left: 5px; /* Khoảng cách từ sidebar ra nút */
-            --hamburger-icon-color: #6c757d; /* Màu xám cho gạch hamburger */
+            --hamburger-button-size: 36px;
+            --hamburger-margin-left: 5px;
+            --hamburger-icon-color: #6c757d;
         }
 
         #wrapper {
@@ -55,7 +55,9 @@
             flex-grow: 1;
             padding-top: var(--header-height);
             transition: all 0.3s ease;
-            margin-left: var(--sidebar-width);
+            margin-left: var(--sidebar-width); /* Default for large screens, sidebar open */
+            /* Bỏ các !important và các width/max-width/padding-left cố định ở đây */
+            box-sizing: border-box; /* Đảm bảo padding không làm tăng width */
         }
 
         body.sb-toggled #sidebar-wrapper {
@@ -63,7 +65,7 @@
         }
 
         body.sb-toggled #page-content-wrapper {
-            margin-left: 0;
+            margin-left: 0; /* Khi sidebar đóng, page-content-wrapper chiếm toàn bộ */
         }
 
         .navbar {
@@ -195,6 +197,7 @@
                 height: 16px;
             }
 
+        /* Responsive Media Queries */
         @@media (max-width: 767.98px) {
             #wrapper {
                 padding-left: 0;
@@ -212,6 +215,7 @@
             #page-content-wrapper {
                 margin-left: 0;
                 width: 100%;
+                /* Bỏ padding-right cố định ở đây, để container-fluid hoặc nội dung bên trong quản lý padding */
             }
 
             .navbar {
@@ -239,7 +243,7 @@
 
             #page-content-wrapper {
                 margin-left: var(--sidebar-width);
-                padding-left: 2rem;
+                padding-left: 2rem; /* Giữ padding-left cho màn hình lớn */
             }
 
             body.sb-toggled #page-content-wrapper {
@@ -249,6 +253,10 @@
             .sidebar-toggle-button {
                 display: flex;
                 left: calc(var(--sidebar-width) + var(--hamburger-margin-left));
+            }
+
+            body.sb-toggled .sidebar-toggle-button {
+                left: var(--hamburger-margin-left);
             }
 
             .navbar {
@@ -336,7 +344,7 @@
         </nav>
 
         <div id="page-content-wrapper">
-            <main class="container-fluid px-md-4">
+            <main class="container-fluid px-3 px-md-4">
                 @RenderBody()
             </main>
         </div>
@@ -351,15 +359,25 @@
         $(document).ready(function () {
             $('#sidebarToggle').on('click', function () {
                 $('body').toggleClass('sb-toggled');
+                localStorage.setItem('sidebarStatus', $('body').hasClass('sb-toggled') ? 'toggled' : 'untoggled');
+                setTimeout(function() {
+                    if (window.calendar) {
+                        window.calendar.updateSize();
+                    } else if (typeof FullCalendar !== "undefined") {
+                        var calendarEl = document.getElementById('calendar');
+                        if (calendarEl && calendarEl._fullCalendar) {
+                            calendarEl._fullCalendar.updateSize();
+                        }
+                    }
+                }, 350);
             });
 
-            $(window).bind("load resize", function () {
-                if ($(this).width() < 768) {
-                    $('body').addClass('sb-toggled');
-                } else {
-                    $('body').removeClass('sb-toggled');
-                }
-            });
+            var savedSidebarStatus = localStorage.getItem('sidebarStatus');
+            if (savedSidebarStatus === 'toggled') {
+                $('body').addClass('sb-toggled');
+            } else {
+                $('body').removeClass('sb-toggled');
+            }
         });
     </script>
     @await RenderSectionAsync("Scripts", required: false)

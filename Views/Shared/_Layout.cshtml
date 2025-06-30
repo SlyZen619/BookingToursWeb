@@ -122,6 +122,11 @@
                                     Xin chào, @Context.Session.GetString("Username")! @* Hiển thị tên người dùng đã đăng nhập *@
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                    <li>
+                                        @* NÚT PROFILE CỦA TÔI (Sẽ chứa lịch đã đặt bên trong) *@
+                                        <a class="dropdown-item" asp-controller="Home" asp-action="Profile">Profile của tôi</a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li> @* Đường phân cách *@
                                     @* Thêm dropdown-menu-end để menu xổ ra bên phải *@
                                     @* Nút Admin Panel - chỉ hiển thị nếu là Admin *@
                                     @if (Context.Session.GetString("IsAdmin") == "True")
