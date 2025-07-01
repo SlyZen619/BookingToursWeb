@@ -1,62 +1,72 @@
-﻿@model BookingToursWeb.Models.Location // Đảm bảo model là Location của bạn
+﻿@model BookingToursWeb.Models.Location // Model của View này sẽ là đối tượng Location
 
 @{
-    ViewData["Title"] = Model.Name; // Đặt tiêu đề trang là tên địa điểm
-    Layout = "~/Views/Shared/_Layout.cshtml"; // Sử dụng layout chung của trang chủ
+    ViewData["Title"] = Model.Name; // Sử dụng tên địa điểm làm tiêu đề trang
+    Layout = "~/Views/Shared/_Layout.cshtml"; // Sử dụng layout chung của bạn
 }
 
-<div class="container mt-5">
+<div class="container py-5">
+    <h1 class="text-center mb-4">@Model.Name</h1>
+
+    <hr />
+
     <div class="row">
-        <div class="col-lg-10 offset-lg-1">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Trang chủ</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
-                </ol>
-            </nav>
-
-            <h1 class="mb-4 text-center">@Model.Name</h1>
-
+        <div class="col-md-8 offset-md-2">
             @if (!string.IsNullOrEmpty(Model.ImageUrl))
             {
-                <div class="text-center mb-4">
-                    <img src="@Model.ImageUrl" class="img-fluid rounded shadow-sm" alt="@Model.Name" style="max-height: 400px; object-fit: cover;">
+                <img src="@Model.ImageUrl" class="img-fluid rounded mb-4" alt="@Model.Name" style="max-height: 400px; width: 100%; object-fit: cover;">
+            }
+            else
+            {
+                <img src="/images/placeholder.jpg" class="img-fluid rounded mb-4" alt="No Image" style="max-height: 400px; width: 100%; object-fit: cover;">
+            }
+
+            <h3 class="mt-4">Thông tin chi tiết</h3>
+            @if (!string.IsNullOrEmpty(Model.Information))
+            {
+                // Hiển thị nội dung từ cột Information
+                <div class="card card-body shadow-sm mb-4">
+                    @Html.Raw(Model.Information) @* Sử dụng @Html.Raw để hiển thị HTML nếu Information có chứa HTML *@
                 </div>
             }
             else
             {
-                <div class="text-center mb-4">
-                    <img src="/images/placeholder.jpg" class="img-fluid rounded shadow-sm" alt="No Image" style="max-height: 400px; object-fit: cover;">
-                </div>
+                <p>Thông tin chi tiết cho địa điểm này đang được cập nhật.</p>
             }
 
+            <h3 class="mt-4">Thông tin khác</h3>
             <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <h3 class="card-title text-primary mb-3">Thông tin giới thiệu</h3>
-                    <div class="card-text">
-                        @Html.Raw(Model.Information) @* Sử dụng Html.Raw để hiển thị nội dung HTML nếu có **@
-                    </div>
-                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <strong><i class="fas fa-map-marker-alt"></i> Địa chỉ:</strong>
+                        <span>@Model.Address</span>
+                    </li>
+                    @if (Model.TicketPrice.HasValue)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <strong><i class="fas fa-money-bill-wave"></i> Giá vé ước tính:</strong>
+                            <span>@Model.TicketPrice.Value.ToString("N0") VNĐ</span>
+                        </li>
+                    }
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <strong><i class="far fa-clock"></i> Giờ mở cửa:</strong>
+                        <span>@Model.OpeningHours</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <strong><i class="fas fa-phone-alt"></i> Liên hệ:</strong>
+                        <span>@Model.ContactInfo</span>
+                    </li>
+                </ul>
             </div>
 
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <h3 class="card-title text-primary mb-3">Thông tin khác</h3>
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item"><strong>Địa chỉ:</strong> @Model.Address</li>
-                        <li class="list-group-item"><strong>Giá vé ước tính:</strong> @String.Format("{0:N0}", Model.TicketPrice) VNĐ</li>
-                        <li class="list-group-item"><strong>Giờ mở cửa:</strong> @Model.OpeningHours</li>
-                        <li class="list-group-item"><strong>Liên hệ:</strong> @Model.ContactInfo</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="text-center mt-4 mb-5">
+            <div class="text-center mt-4">
                 <a asp-controller="Home" asp-action="Booking" asp-route-locationId="@Model.Id" class="btn btn-primary btn-lg">Đặt lịch tham quan</a>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-secondary btn-lg ml-2">Quay lại trang chủ</a>
             </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 }

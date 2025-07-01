@@ -3,10 +3,10 @@ using BookingToursWeb.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http; // Cần thiết để sử dụng Session
-using Newtonsoft.Json; // <-- Đảm bảo dòng này có mặt và gói NuGet đã cài đặt
+using Newtonsoft.Json;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies; // Đảm bảo đã có dòng này
 
 namespace BookingToursWeb.Controllers
 {
@@ -21,28 +21,37 @@ namespace BookingToursWeb.Controllers
             _context = context;
         }
 
+        // Action mặc định - Trang chủ
         public async Task<IActionResult> Index()
         {
-            var allPlaces = await _context.Locations
-                                         .OrderByDescending(l => l.Id)
-                                         .ToListAsync();
-
-            var viewModel = new HomeViewModel
+            try
             {
-                FamousPlaces = allPlaces
-            };
+                var allPlaces = await _context.Locations
+                                              .OrderByDescending(l => l.Id)
+                                              .ToListAsync();
 
-            ViewData["Title"] = "Trang chủ";
-            return View(viewModel);
+                var viewModel = new HomeViewModel
+                {
+                    FamousPlaces = allPlaces
+                };
+
+                ViewData["Title"] = "Trang chủ";
+                return View(viewModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi tải trang Index.");
+                TempData["ErrorMessage"] = "Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.";
+                return View("Error");
+            }
         }
 
         // GET: Home/Booking
-        public async Task<IActionResult> Booking()
+        // Thêm tham số optional 'locationId' để xử lý yêu cầu từ trang chi tiết địa điểm.
+        public async Task<IActionResult> Booking(int? locationId)
         {
             ViewData["Title"] = "Đặt lịch Tour";
 
-            // Lấy TẤT CẢ các địa điểm với các thuộc tính cụ thể, bao gồm ImageUrl.
-            // Newtonsoft.Json sẽ serialize các tên này giữ nguyên PascalCase (ví dụ: "Id", "Name").
             var locationsData = await _context.Locations
                                               .Select(l => new
                                               {
@@ -50,21 +59,45 @@ namespace BookingToursWeb.Controllers
                                                   l.Name,
                                                   l.IsActive,
                                                   l.TicketPrice,
-                                                  l.ImageUrl // <--- ĐÃ THÊM: Đảm bảo ImageUrl được select
+                                                  l.ImageUrl
                                               })
                                               .ToListAsync();
-
-            // Chuyển danh sách đối tượng ẩn danh thành chuỗi JSON và truyền qua ViewBag
             ViewBag.AllLocationsData = JsonConvert.SerializeObject(locationsData);
 
             var userId = HttpContext.Session.GetInt32("UserId");
-            if (userId != null)
+            ViewBag.CurrentUserId = userId;
+
+            // ĐIỀU CHỈNH LOGIC ẨN NÚT "Quay lại chọn địa điểm"
+            // Nút này chỉ ẩn đi khi người dùng vào trang Booking mà không có locationId (tức là muốn chọn địa điểm từ đầu)
+            // Nếu có locationId (đến từ trang PlaceDetails), nút này phải hiển thị
+            ViewBag.HideBackButton = !locationId.HasValue;
+
+            if (locationId.HasValue)
             {
-                ViewBag.CurrentUserId = userId.Value;
+                var preselectedLocation = locationsData.FirstOrDefault(l => l.Id == locationId.Value);
+
+                if (preselectedLocation != null && preselectedLocation.IsActive)
+                {
+                    ViewBag.PreselectedLocationId = preselectedLocation.Id;
+                    ViewBag.PreselectedLocationName = preselectedLocation.Name;
+                    ViewBag.PreselectedLocationTicketPrice = preselectedLocation.TicketPrice;
+                    // ViewBag.HideBackButton đã được thiết lập ở trên dựa vào locationId.HasValue
+                }
+                else
+                {
+                    // Nếu locationId không hợp lệ hoặc địa điểm không hoạt động
+                    ViewBag.PreselectedLocationId = null;
+                    // Nút quay lại vẫn hiển thị vì người dùng đến từ URL có locationId dù nó không hợp lệ.
+                    TempData["ErrorMessage"] = preselectedLocation == null
+                                            ? "Địa điểm được chọn không tồn tại."
+                                            : "Địa điểm này hiện không hoạt động. Vui lòng chọn địa điểm khác.";
+                }
             }
             else
             {
-                ViewBag.CurrentUserId = null; // Đảm bảo không lỗi nếu người dùng chưa đăng nhập
+                // Nếu không có locationId được truyền (người dùng vào từ menu)
+                ViewBag.PreselectedLocationId = null;
+                // ViewBag.HideBackButton đã được thiết lập là true ở trên
             }
 
             return View(new Booking());
@@ -83,8 +116,8 @@ namespace BookingToursWeb.Controllers
             }
 
             booking.UserId = userId.Value;
-            booking.CreatedAt = DateTime.Now;
-            booking.UpdatedAt = DateTime.Now;
+            booking.CreatedAt = DateTime.UtcNow;
+            booking.UpdatedAt = DateTime.UtcNow;
             booking.Status = "Pending";
 
             var location = await _context.Locations.FindAsync(booking.LocationId);
@@ -107,52 +140,122 @@ namespace BookingToursWeb.Controllers
             }
 
             const int MAX_BOOKINGS_PER_DAY_PER_LOCATION = 3;
-            var existingBookingsCount = await _context.Bookings
-                .CountAsync(b => b.LocationId == booking.LocationId &&
-                                 b.AppointmentDate.Date == booking.AppointmentDate.Date);
-
-            if (existingBookingsCount >= MAX_BOOKINGS_PER_DAY_PER_LOCATION)
+            if (booking.AppointmentDate != default(DateTime))
             {
-                ModelState.AddModelError(string.Empty, "Địa điểm này đã đủ lịch đặt cho ngày đã chọn. Vui lòng chọn ngày hoặc địa điểm khác.");
+                var existingBookingsCount = await _context.Bookings
+                   .CountAsync(b => b.LocationId == booking.LocationId &&
+                                    b.AppointmentDate.Date == booking.AppointmentDate.Date);
+
+                if (existingBookingsCount >= MAX_BOOKINGS_PER_DAY_PER_LOCATION)
+                {
+                    ModelState.AddModelError(string.Empty, "Địa điểm này đã đủ lịch đặt cho ngày đã chọn. Vui lòng chọn ngày hoặc địa điểm khác.");
+                }
+            }
+            else
+            {
+                ModelState.AddModelError("AppointmentDate", "Vui lòng chọn ngày và giờ đặt lịch.");
             }
 
-            if (ModelState.IsValid)
+            if (booking.AppointmentDate < DateTime.UtcNow.AddMinutes(-5))
+            {
+                ModelState.AddModelError("AppointmentDate", "Không thể đặt lịch vào thời gian trong quá khứ.");
+            }
+
+
+            if (!ModelState.IsValid)
+            {
+                var locationsDataForErrors = await _context.Locations
+                                                         .Select(l => new
+                                                         {
+                                                             l.Id,
+                                                             l.Name,
+                                                             l.IsActive,
+                                                             l.TicketPrice,
+                                                             l.ImageUrl
+                                                         })
+                                                         .ToListAsync();
+                ViewBag.AllLocationsData = JsonConvert.SerializeObject(locationsDataForErrors);
+                ViewBag.CurrentUserId = userId;
+
+                var selectedLoc = locationsDataForErrors.FirstOrDefault(l => l.Id == booking.LocationId);
+                if (selectedLoc != null)
+                {
+                    ViewBag.PreselectedLocationId = selectedLoc.Id;
+                    ViewBag.PreselectedLocationName = selectedLoc.Name;
+                    ViewBag.PreselectedLocationTicketPrice = selectedLoc.TicketPrice;
+                    ViewBag.HideBackButton = false; // Luôn hiển thị nút khi đã chọn địa điểm (dù có lỗi validation)
+                }
+                else
+                {
+                    ViewBag.PreselectedLocationId = null;
+                    ViewBag.HideBackButton = true; // Ẩn nút nếu không có địa điểm nào được chọn
+                }
+
+                ViewData["Title"] = "Đặt lịch Tour";
+                return View("Booking", booking);
+            }
+
+            try
             {
                 _context.Add(booking);
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = "Đặt lịch thành công! Vui lòng chờ xác nhận.";
                 return RedirectToAction("BookingSuccess");
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lưu đặt lịch vào cơ sở dữ liệu.");
+                ModelState.AddModelError(string.Empty, "Có lỗi xảy ra khi xử lý đặt lịch của bạn. Vui lòng thử lại.");
 
-            // Nếu ModelState không hợp lệ, tải lại dữ liệu địa điểm cho View
-            // Đảm bảo rằng ImageUrl cũng được bao gồm khi tải lại dữ liệu để hiển thị lại các card
-            var locationsDataForErrors = await _context.Locations
-                                                      .Select(l => new
-                                                      {
-                                                          l.Id,
-                                                          l.Name,
-                                                          l.IsActive,
-                                                          l.TicketPrice,
-                                                          l.ImageUrl // <--- ĐÃ THÊM: Đảm bảo ImageUrl được select khi có lỗi
-                                                      })
-                                                      .ToListAsync();
-            ViewBag.AllLocationsData = JsonConvert.SerializeObject(locationsDataForErrors);
-            ViewBag.CurrentUserId = userId.Value;
-            ViewData["Title"] = "Đặt lịch Tour";
+                var locationsDataForErrors = await _context.Locations
+                                                         .Select(l => new
+                                                         {
+                                                             l.Id,
+                                                             l.Name,
+                                                             l.IsActive,
+                                                             l.TicketPrice,
+                                                             l.ImageUrl
+                                                         })
+                                                         .ToListAsync();
+                ViewBag.AllLocationsData = JsonConvert.SerializeObject(locationsDataForErrors);
+                ViewBag.CurrentUserId = userId;
 
-            return View("Booking", booking);
+                var selectedLoc = locationsDataForErrors.FirstOrDefault(l => l.Id == booking.LocationId);
+                if (selectedLoc != null)
+                {
+                    ViewBag.PreselectedLocationId = selectedLoc.Id;
+                    ViewBag.PreselectedLocationName = selectedLoc.Name;
+                    ViewBag.PreselectedLocationTicketPrice = selectedLoc.TicketPrice;
+                    ViewBag.HideBackButton = false; // Luôn hiển thị nút khi đã chọn địa điểm (dù có lỗi db)
+                }
+                else
+                {
+                    ViewBag.PreselectedLocationId = null;
+                    ViewBag.HideBackButton = true; // Ẩn nút nếu không có địa điểm nào được chọn
+                }
+
+                ViewData["Title"] = "Đặt lịch Tour";
+                return View("Booking", booking);
+            }
         }
 
-        // API để kiểm tra số lượng đặt lịch theo ngày và địa điểm
+        // API để kiểm tra số lượng đặt lịch theo ngày và địa điểm (dùng cho client-side validation)
         [HttpGet]
         public async Task<IActionResult> GetBookingsCountByDateAndLocation(DateTime date, int locationId)
         {
-            var count = await _context.Bookings
-                .CountAsync(b => b.AppointmentDate.Date == date.Date && b.LocationId == locationId);
+            try
+            {
+                var count = await _context.Bookings
+                    .CountAsync(b => b.AppointmentDate.Date == date.Date && b.LocationId == locationId);
 
-            return Json(new { count = count });
+                return Json(new { count = count });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Lỗi khi lấy số lượng đặt lịch cho ngày {date.ToShortDateString()} và địa điểm {locationId}.");
+                return StatusCode(500, "Lỗi khi kiểm tra số lượng đặt lịch.");
+            }
         }
-
 
         // Trang xác nhận đặt lịch thành công
         public IActionResult BookingSuccess()
@@ -161,55 +264,78 @@ namespace BookingToursWeb.Controllers
             return View();
         }
 
+        // Trang hồ sơ người dùng và lịch sử đặt lịch
         public async Task<IActionResult> Profile()
         {
-            ViewData["Title"] = "Profile của tôi"; // Tiêu đề trang là Profile của tôi
+            ViewData["Title"] = "Hồ sơ của tôi";
 
             var userId = HttpContext.Session.GetInt32("UserId");
             if (userId == null)
             {
                 TempData["ErrorMessage"] = "Bạn cần đăng nhập để xem thông tin cá nhân và lịch đã đặt.";
-                return RedirectToAction("Login", "Account"); // Chuyển hướng đến trang đăng nhập nếu chưa đăng nhập
+                return RedirectToAction("Login", "Account");
             }
 
-            // Lấy thông tin người dùng (có thể cần sau này)
-            var user = await _context.Users.FindAsync(userId.Value);
-            if (user == null)
+            try
             {
-                TempData["ErrorMessage"] = "Không tìm thấy thông tin người dùng.";
-                return RedirectToAction("Index"); // Hoặc trang lỗi phù hợp
+                var user = await _context.Users.FindAsync(userId.Value);
+                if (user == null)
+                {
+                    TempData["ErrorMessage"] = "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.";
+                    await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return RedirectToAction("Login", "Account");
+                }
+
+                var userBookings = await _context.Bookings
+                    .Include(b => b.Location)
+                    .Where(b => b.UserId == userId.Value)
+                    .OrderByDescending(b => b.AppointmentDate)
+                    .ToListAsync();
+
+                var profileViewModel = new UserProfileViewModel
+                {
+                    User = user,
+                    Bookings = userBookings
+                };
+
+                return View(profileViewModel);
             }
-
-            // Lấy tất cả lịch đặt của người dùng hiện tại, bao gồm thông tin Location
-            var userBookings = await _context.Bookings
-                .Include(b => b.Location) // Nạp thông tin địa điểm liên quan
-                .Where(b => b.UserId == userId.Value)
-                .OrderByDescending(b => b.AppointmentDate) // Sắp xếp theo ngày đặt giảm dần
-                .ToListAsync();
-
-            // Tạo một ViewModel để chứa cả thông tin User và danh sách Bookings
-            var profileViewModel = new UserProfileViewModel
+            catch (Exception ex)
             {
-                User = user,
-                Bookings = userBookings
-            };
-
-            return View(profileViewModel); // Truyền ViewModel sang View
+                _logger.LogError(ex, $"Lỗi khi tải hồ sơ người dùng cho UserId: {userId}");
+                TempData["ErrorMessage"] = "Có lỗi xảy ra khi tải hồ sơ của bạn. Vui lòng thử lại sau.";
+                return RedirectToAction("Index");
+            }
         }
 
-        public async Task<IActionResult> PlaceDetails(int id)
+        // Trang chi tiết địa điểm
+        public async Task<IActionResult> PlaceDetails(int? id)
         {
-            // Tìm địa điểm theo ID, bao gồm cột Information
-            // Giả định 'Locations' là DbSet của bạn trong DbContext
-            var place = await _context.Locations
-                                    .FirstOrDefaultAsync(m => m.Id == id);
-
-            if (place == null)
+            if (id == null)
             {
-                return NotFound(); // Trả về lỗi 404 nếu không tìm thấy địa điểm
+                _logger.LogWarning("PlaceDetails: ID địa điểm không được cung cấp.");
+                return NotFound();
             }
 
-            return View(place); // Truyền đối tượng Location đến View
+            try
+            {
+                var location = await _context.Locations.FindAsync(id);
+
+                if (location == null)
+                {
+                    _logger.LogWarning($"PlaceDetails: Không tìm thấy địa điểm với ID: {id}.");
+                    return NotFound();
+                }
+
+                ViewData["Title"] = location.Name;
+                return View(location);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Lỗi khi tải chi tiết địa điểm với ID: {id}.");
+                TempData["ErrorMessage"] = "Có lỗi xảy ra khi tải thông tin địa điểm. Vui lòng thử lại sau.";
+                return View("Error");
+            }
         }
 
         public IActionResult Privacy()
