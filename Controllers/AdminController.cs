@@ -405,7 +405,6 @@ namespace BookingToursWeb.Controllers
         // ====================================================================
 
         // GET: Admin/ManageAppointments
-        // Bỏ async vì không có await nào được sử dụng trong phương thức này
         public async Task<IActionResult> ManageAppointments()
         {
             if (!IsCurrentUserAdmin())
@@ -444,7 +443,7 @@ namespace BookingToursWeb.Controllers
             }
 
             var bookings = await _context.Bookings
-                .Include(b => b.User)     // Tải thông tin người dùng liên quan
+                .Include(b => b.User)       // Tải thông tin người dùng liên quan
                 .Include(b => b.Location) // Tải thông tin địa điểm liên quan
                 .ToListAsync();
 
@@ -453,7 +452,8 @@ namespace BookingToursWeb.Controllers
                 id = b.Id,
                 // Sử dụng toán tử ?? để xử lý null an toàn cho Username và LocationName
                 title = $"{b.User?.Username ?? "Người dùng ẩn"} - {b.Location?.Name ?? "Địa điểm ẩn"}",
-                start = b.AppointmentDate.ToString("yyyy-MM-ddTHH:mm:ss"), // Định dạng ISO 8601
+                // ĐÃ SỬA: Chuyển đổi AppointmentDate sang múi giờ địa phương (GMT+7)
+                start = b.AppointmentDate.ToUniversalTime().ToString("o"), 
 
                 // Thêm các thuộc tính mở rộng cho tooltip hoặc modal chi tiết (extendedProps)
                 userName = b.User?.Username ?? "Người dùng ẩn",
@@ -461,11 +461,12 @@ namespace BookingToursWeb.Controllers
                 userId = b.UserId,
                 locationId = b.LocationId,
                 numberOfVisitors = b.NumberOfVisitors,
-                totalAmount = b.TotalAmount,
+                totalAmount = b.TotalAmount.ToString("N0") + "đ", // Định dạng tiền tệ cho tooltip
                 status = b.Status,
                 specialNotes = b.SpecialNotes, // SpecialNotes là string? nên có thể null, không cần ?? string rỗng nếu muốn hiển thị null
-                createdAt = b.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"), // Bỏ toán tử ?. vì CreatedAt là non-nullable DateTime
-                updatedAt = b.UpdatedAt.ToString("yyyy-MM-dd HH:mm:ss") // Bỏ toán tử ?. vì UpdatedAt là non-nullable DateTime
+                // ĐÃ SỬA: Chuyển đổi CreatedAt và UpdatedAt sang múi giờ địa phương cho tooltip
+                createdAt = b.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"),
+                updatedAt = b.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
             })
             .ToList(); // Thêm ToList() để thực thi truy vấn trước khi trả về Json
 
@@ -490,11 +491,14 @@ namespace BookingToursWeb.Controllers
             var model = new Booking();
             if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out DateTime parsedDate))
             {
-                model.AppointmentDate = parsedDate;
+                // ĐẢM BẢO THỜI GIAN ĐƯỢC CHUYỂN ĐỔI CHÍNH XÁC KHI ĐƯỢC TRUYỀN TỪ FULLCALENDAR
+                // FullCalendar truyền startStr là ISO 8601, C# Parse sẽ tự động xem nó là Local hoặc UTC tùy chuỗi
+                // Nếu bạn muốn chắc chắn nó là múi giờ địa phương, bạn có thể thiết lập:
+                model.AppointmentDate = DateTime.SpecifyKind(parsedDate, DateTimeKind.Local);
             }
             else
             {
-                model.AppointmentDate = DateTime.Now;
+                model.AppointmentDate = DateTime.Now; // Mặc định là thời gian hiện tại của máy chủ
             }
             model.Status = "Pending";
 
@@ -538,6 +542,7 @@ namespace BookingToursWeb.Controllers
                 }
                 // === Kết thúc logic giới hạn lịch hẹn ===
 
+                // Khi lưu vào DB, nên lưu dưới dạng UTC để nhất quán (sau đó chuyển đổi khi hiển thị)
                 booking.CreatedAt = DateTime.UtcNow;
                 booking.UpdatedAt = DateTime.UtcNow;
 
@@ -625,8 +630,8 @@ namespace BookingToursWeb.Controllers
                     // Loại trừ lịch hẹn hiện tại đang được chỉnh sửa khỏi phép đếm
                     var existingAppointmentsCount = await _context.Bookings
                         .Where(b => b.LocationId == booking.LocationId &&
-                                    b.AppointmentDate.Date == newAppointmentDateOnly &&
-                                    b.Id != booking.Id) // LOẠI TRỪ LỊCH HẸN HIỆN TẠI
+                                     b.AppointmentDate.Date == newAppointmentDateOnly &&
+                                     b.Id != booking.Id) // LOẠI TRỪ LỊCH HẸN HIỆN TẠI
                         .CountAsync();
 
                     const int MaxAppointmentsPerDayPerLocation = 3;
@@ -645,6 +650,7 @@ namespace BookingToursWeb.Controllers
 
                     // Gán CreatedAt từ existingBooking để đảm bảo nó không bị mất
                     booking.CreatedAt = existingBooking.CreatedAt;
+                    // Cập nhật UpdatedAt về thời gian UTC hiện tại
                     booking.UpdatedAt = DateTime.UtcNow;
 
                     var location = await _context.Locations.FindAsync(booking.LocationId);

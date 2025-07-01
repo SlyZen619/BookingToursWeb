@@ -197,6 +197,20 @@ namespace BookingToursWeb.Controllers
             return View(profileViewModel); // Truyền ViewModel sang View
         }
 
+        public async Task<IActionResult> PlaceDetails(int id)
+        {
+            // Tìm địa điểm theo ID, bao gồm cột Information
+            // Giả định 'Locations' là DbSet của bạn trong DbContext
+            var place = await _context.Locations
+                                    .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (place == null)
+            {
+                return NotFound(); // Trả về lỗi 404 nếu không tìm thấy địa điểm
+            }
+
+            return View(place); // Truyền đối tượng Location đến View
+        }
 
         public IActionResult Privacy()
         {

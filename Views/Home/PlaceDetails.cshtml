@@ -1,0 +1,62 @@
+﻿@model BookingToursWeb.Models.Location // Đảm bảo model là Location của bạn
+
+@{
+    ViewData["Title"] = Model.Name; // Đặt tiêu đề trang là tên địa điểm
+    Layout = "~/Views/Shared/_Layout.cshtml"; // Sử dụng layout chung của trang chủ
+}
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-lg-10 offset-lg-1">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Trang chủ</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
+                </ol>
+            </nav>
+
+            <h1 class="mb-4 text-center">@Model.Name</h1>
+
+            @if (!string.IsNullOrEmpty(Model.ImageUrl))
+            {
+                <div class="text-center mb-4">
+                    <img src="@Model.ImageUrl" class="img-fluid rounded shadow-sm" alt="@Model.Name" style="max-height: 400px; object-fit: cover;">
+                </div>
+            }
+            else
+            {
+                <div class="text-center mb-4">
+                    <img src="/images/placeholder.jpg" class="img-fluid rounded shadow-sm" alt="No Image" style="max-height: 400px; object-fit: cover;">
+                </div>
+            }
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h3 class="card-title text-primary mb-3">Thông tin giới thiệu</h3>
+                    <div class="card-text">
+                        @Html.Raw(Model.Information) @* Sử dụng Html.Raw để hiển thị nội dung HTML nếu có **@
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h3 class="card-title text-primary mb-3">Thông tin khác</h3>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item"><strong>Địa chỉ:</strong> @Model.Address</li>
+                        <li class="list-group-item"><strong>Giá vé ước tính:</strong> @String.Format("{0:N0}", Model.TicketPrice) VNĐ</li>
+                        <li class="list-group-item"><strong>Giờ mở cửa:</strong> @Model.OpeningHours</li>
+                        <li class="list-group-item"><strong>Liên hệ:</strong> @Model.ContactInfo</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="text-center mt-4 mb-5">
+                <a asp-controller="Home" asp-action="Booking" asp-route-locationId="@Model.Id" class="btn btn-primary btn-lg">Đặt lịch tham quan</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+}

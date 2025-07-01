@@ -77,9 +77,13 @@
                             <td>@Html.DisplayFor(modelItem => item.NumberOfVisitors)</td>
                             <td>@Html.DisplayFor(modelItem => item.TotalAmount)</td>
                             <td>@Html.DisplayFor(modelItem => item.Status)</td>
-                            <td>@(item.SpecialNotes ?? "Không có")</td>
-                            <td>@Html.DisplayFor(modelItem => item.CreatedAt)</td>
-                            <td>@Html.DisplayFor(modelItem => item.UpdatedAt)</td>
+                            @* ĐÃ SỬA: Giới hạn chiều rộng cột "Ghi chú" *********************************************************@
+                            <td class="text-truncate" style="max-width: 200px;">
+                                @(item.SpecialNotes ?? "Không có")
+                            </td>
+                            @* ĐÃ SỬA: Định dạng lại thời gian hiển thị về múi giờ địa phương *********************************@
+                            <td>@item.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@item.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                             <td>
                                 <a asp-action="EditAppointment" asp-route-id="@item.Id" class="btn btn-info btn-sm">Sửa</a> |
                                 <form asp-action="DeleteAppointment" asp-route-id="@item.Id" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa lịch hẹn ID: @item.Id của người dùng @(item.User?.Username ?? "N/A") không?');">
@@ -155,14 +159,22 @@
                         center: 'title',
                         right: 'dayGridMonth,listWeek'
                     },
-                    titleFormat: function(date) {
-                        const monthNames = [
-                            "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
-                            "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
-                        ];
-                        const monthIndex = date.date.month;
-                        const year = date.date.year;
-                        return monthNames[monthIndex] + ' năm ' + year;
+                    views: {
+                        dayGridMonth: {
+                            titleFormat: function(info) { // Sử dụng info để truy cập date và view
+                                const monthNames = [
+                                    "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
+                                    "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
+                                ];
+                                // info.date chứa các thành phần ngày, tháng, năm
+                                const monthIndex = info.date.month; // Lưu ý month là 0-indexed
+                                const year = info.date.year;
+                                return `${monthNames[monthIndex]} năm ${year}`;
+                            }
+                        },
+                        listWeek: {
+                            titleFormat: { day: 'numeric', month: 'long', year: 'numeric' } // "1 – 7 tháng 7 năm 2025"
+                        }
                     },
                     buttonText: {
                         today: 'Hôm nay',

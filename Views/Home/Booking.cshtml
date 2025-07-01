@@ -34,12 +34,12 @@
             box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
         }
 
-    .location-card.disabled-location {
-        cursor: not-allowed;
-        opacity: 0.6;
-        background-color: #f8f9fa;
-        pointer-events: none; /* Ngăn chặn sự kiện click */
-    }
+        .location-card.disabled-location {
+            cursor: not-allowed;
+            opacity: 0.6;
+            background-color: #f8f9fa;
+            pointer-events: none; /* Ngăn chặn sự kiện click */
+        }
 
         .location-card img {
             max-width: 100%;
@@ -292,7 +292,7 @@
                         $('#submitBookingBtn').prop('disabled', true);
                         $('#appointmentTimeInput').prop('disabled', true);
                         $('#appointmentTimeError').text('Địa điểm này đã đủ lịch đặt cho ngày đã chọn. Vui lòng chọn ngày khác.');
-                        alert('Địa điểm này đã đủ lịch đặt cho ngày đã chọn. Vui lòng chọn ngày khác.');
+                        // alert('Địa điểm này đã đủ lịch đặt cho ngày đã chọn. Vui lòng chọn ngày khác.'); // Tắt alert này để tránh popup liên tục
                     } else {
                         $('#submitBookingBtn').prop('disabled', false);
                         $('#appointmentTimeInput').prop('disabled', false);
@@ -337,30 +337,26 @@
                 locationsContainer.append(cardHtml);
             });
 
-            // Logic xử lý khi click vào card địa điểm
-            locationsContainer.on('click', '.location-card:not(.disabled-location)', function() {
-                // Xóa trạng thái 'selected' khỏi tất cả các card
-                $('.location-card').removeClass('selected');
+            const urlParams = new URLSearchParams(window.location.search);
+            const locationIdFromUrl = urlParams.get('locationId');
 
-                // Thêm trạng thái 'selected' vào card vừa click
-                $(this).addClass('selected');
+            if (locationIdFromUrl) {
+                const targetCard = $(`.location-card[data-id="${locationIdFromUrl}"]`);
 
-                selectedLocationIdGlobal = $(this).data('id');
-                selectedLocationNameGlobal = $(this).data('name');
-                selectedLocationTicketPriceGlobal = $(this).data('ticketprice');
+                if (targetCard.length > 0 && targetCard.data('isactive')) {
+                    // Tự động chọn địa điểm từ URL
+                    selectedLocationIdGlobal = targetCard.data('id');
+                    selectedLocationNameGlobal = targetCard.data('name');
+                    selectedLocationTicketPriceGlobal = targetCard.data('ticketprice');
 
-                // Kích hoạt ngay việc chuyển sang phần lịch
-                if (selectedLocationIdGlobal) {
                     $('#locationSelectionSection').hide();
                     $('#bookingCalendarSection').show();
-                    backToLocationSelectionBtn.show();
+                    backToLocationSelectionBtn.hide(); // ẨN NÚT KHI TRUY CẬP TỪ URL
 
-                    // Cập nhật tiêu đề địa điểm đã chọn
                     selectedLocationTitle.text(`Đặt lịch cho địa điểm: ${selectedLocationNameGlobal}`);
 
-                    // Lấy ngày hiện tại (không có giờ, phút, giây)
                     const today = new Date();
-                    today.setHours(0, 0, 0, 0); // Đặt về đầu ngày
+                    today.setHours(0, 0, 0, 0);
 
                     if (!calendarInstance) {
                         var calendarEl = document.getElementById('calendar');
@@ -384,32 +380,26 @@
                             selectable: true,
                             selectMirror: true,
                             validRange: {
-                                start: today.toISOString().split('T')[0] // Chỉ cho phép chọn từ ngày hôm nay trở đi
+                                start: today.toISOString().split('T')[0]
                             },
                             selectAllow: function(selectInfo) {
-                                // Chỉ cho phép chọn ngày hiện tại hoặc tương lai
                                 const selectedDay = new Date(selectInfo.start.getFullYear(), selectInfo.start.getMonth(), selectInfo.start.getDate());
                                 return selectedDay >= today;
                             },
                             select: function(info) {
-                                // Không cần kiểm tra ngày quá khứ nữa vì đã chặn ở selectAllow
                                 selectedDateFromCalendar = info.start;
                                 $('#appointmentDateDisplay').val(formatDateForInput(selectedDateFromCalendar));
                                 const now = new Date();
-                                const currentHour = now.getHours();
-                                const currentMinute = now.getMinutes();
 
-                                // Đặt giá trị min cho input time để không chọn giờ trong quá khứ của ngày hiện tại
-                                // Chỉ đặt min nếu ngày được chọn là ngày hiện tại
                                 const selectedDay = new Date(info.start.getFullYear(), info.start.getMonth(), info.start.getDate());
                                 if (selectedDay.getTime() === today.getTime()) {
                                     $('#appointmentTimeInput').attr('min', formatTimeForInput(now));
                                 } else {
-                                    $('#appointmentTimeInput').removeAttr('min'); // Xóa min nếu không phải ngày hiện tại
+                                    $('#appointmentTimeInput').removeAttr('min');
                                 }
-                                
-                                $('#appointmentTimeInput').val(formatTimeForInput(now)); // Đặt giờ mặc định là giờ hiện tại
-                                
+
+                                $('#appointmentTimeInput').val(formatTimeForInput(now));
+
                                 $('#bookingModalLocationId').val(selectedLocationIdGlobal);
                                 $('#selectedLocationNameDisplay').val(selectedLocationNameGlobal);
                                 $('#bookingModal').modal('show');
@@ -426,11 +416,107 @@
                         });
                         calendarInstance.render();
                     } else {
-                        // Cập nhật validRange cho instance hiện có nếu đã khởi tạo
                         calendarInstance.setOption('validRange', {
                             start: today.toISOString().split('T')[0]
                         });
-                        calendarInstance.render(); // Render lại lịch nếu đã có instance
+                        calendarInstance.render();
+                    }
+                } else {
+                    // Nếu địa điểm không tìm thấy hoặc không hoạt động
+                    alert('Địa điểm được yêu cầu không tìm thấy hoặc không hoạt động. Vui lòng chọn lại.');
+                    $('#locationSelectionSection').show();
+                    $('#bookingCalendarSection').hide();
+                    backToLocationSelectionBtn.hide(); // Đảm bảo nút ẩn nếu có lỗi
+                }
+            } else {
+                // Nếu không có locationId trong URL, hiển thị phần chọn địa điểm ban đầu
+                $('#locationSelectionSection').show();
+                $('#bookingCalendarSection').hide();
+                backToLocationSelectionBtn.hide(); // Đảm bảo nút ẩn ban đầu
+            }
+
+            // Logic xử lý khi click vào card địa điểm trong trang Booking
+            locationsContainer.on('click', '.location-card:not(.disabled-location)', function() {
+                // Chỉ hiển thị nút "Quay lại" khi người dùng tự chọn địa điểm
+                backToLocationSelectionBtn.show();
+
+                $('.location-card').removeClass('selected');
+                $(this).addClass('selected');
+
+                selectedLocationIdGlobal = $(this).data('id');
+                selectedLocationNameGlobal = $(this).data('name');
+                selectedLocationTicketPriceGlobal = $(this).data('ticketprice');
+
+                if (selectedLocationIdGlobal) {
+                    $('#locationSelectionSection').hide();
+                    $('#bookingCalendarSection').show();
+                    selectedLocationTitle.text(`Đặt lịch cho địa điểm: ${selectedLocationNameGlobal}`);
+
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    if (!calendarInstance) {
+                        var calendarEl = document.getElementById('calendar');
+                        calendarInstance = new FullCalendar.Calendar(calendarEl, {
+                            initialView: 'dayGridMonth',
+                            locale: 'vi',
+                            headerToolbar: {
+                                left: 'prev,next today',
+                                center: 'title',
+                                right: 'dayGridMonth'
+                            },
+                            titleFormat: function(date) {
+                                const monthNames = [
+                                    "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
+                                    "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
+                                ];
+                                const monthIndex = date.date.month;
+                                const year = date.date.year;
+                                return monthNames[monthIndex] + ' năm ' + year;
+                            },
+                            selectable: true,
+                            selectMirror: true,
+                            validRange: {
+                                start: today.toISOString().split('T')[0]
+                            },
+                            selectAllow: function(selectInfo) {
+                                const selectedDay = new Date(selectInfo.start.getFullYear(), selectInfo.start.getMonth(), selectInfo.start.getDate());
+                                return selectedDay >= today;
+                            },
+                            select: function(info) {
+                                selectedDateFromCalendar = info.start;
+                                $('#appointmentDateDisplay').val(formatDateForInput(selectedDateFromCalendar));
+                                const now = new Date();
+
+                                const selectedDay = new Date(info.start.getFullYear(), info.start.getMonth(), info.start.getDate());
+                                if (selectedDay.getTime() === today.getTime()) {
+                                    $('#appointmentTimeInput').attr('min', formatTimeForInput(now));
+                                } else {
+                                    $('#appointmentTimeInput').removeAttr('min');
+                                }
+
+                                $('#appointmentTimeInput').val(formatTimeForInput(now));
+
+                                $('#bookingModalLocationId').val(selectedLocationIdGlobal);
+                                $('#selectedLocationNameDisplay').val(selectedLocationNameGlobal);
+                                $('#bookingModal').modal('show');
+                                calendarInstance.unselect();
+                                checkBookingAvailabilityForModal();
+                                updateTotalAmount();
+                            },
+                            dayCellDidMount: function(info) {
+                                const cellDate = new Date(info.date.getFullYear(), info.date.getMonth(), info.date.getDate());
+                                if (cellDate < today) {
+                                    $(info.el).addClass('fc-day-past');
+                                }
+                            }
+                        });
+                        calendarInstance.render();
+                    } else {
+                        calendarInstance.setOption('validRange', {
+                            start: today.toISOString().split('T')[0]
+                        });
+                        calendarInstance.render();
                     }
                 }
             });
@@ -439,9 +525,8 @@
             backToLocationSelectionBtn.on('click', function() {
                 $('#bookingCalendarSection').hide();
                 $('#locationSelectionSection').show();
-                backToLocationSelectionBtn.hide();
+                backToLocationSelectionBtn.hide(); // Ẩn nút khi quay lại
 
-                // Reset trạng thái chọn địa điểm khi quay lại
                 $('.location-card').removeClass('selected');
                 selectedLocationIdGlobal = null;
                 selectedLocationNameGlobal = null;
@@ -451,30 +536,26 @@
 
             // --- Logic cho phần Modal đặt lịch ---
             $('#numberOfVisitorsInput').on('change', updateTotalAmount);
-            
-            // THAY ĐỔI: Thêm sự kiện change cho input giờ
+
             $('#appointmentTimeInput').on('change', function() {
-                var selectedTime = $(this).val(); // ví dụ: "21:40"
-                var selectedDate = new Date(selectedDateFromCalendar); // Ngày đã chọn từ lịch
+                var selectedTime = $(this).val();
+                var selectedDate = new Date(selectedDateFromCalendar);
 
                 if (selectedTime && selectedDate) {
                     var [hours, minutes] = selectedTime.split(':').map(Number);
-                    
+
                     var combinedDateTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), hours, minutes);
-                    
+
                     const now = new Date();
-                    // So sánh chỉ khi ngày được chọn là ngày hiện tại
                     if (selectedDate.toDateString() === now.toDateString()) {
-                        // Nếu giờ chọn trong quá khứ so với giờ hiện tại
                         if (combinedDateTime < now) {
                             $('#appointmentTimeError').text('Không thể chọn giờ trong quá khứ. Vui lòng chọn giờ hiện tại hoặc tương lai.');
                             $('#submitBookingBtn').prop('disabled', true);
                         } else {
                             $('#appointmentTimeError').text('');
-                            $('#submitBookingBtn').prop('disabled', false); // Cho phép submit nếu giờ hợp lệ
+                            $('#submitBookingBtn').prop('disabled', false);
                         }
                     } else {
-                        // Nếu là ngày tương lai, không cần kiểm tra giờ quá khứ
                         $('#appointmentTimeError').text('');
                         $('#submitBookingBtn').prop('disabled', false);
                     }
@@ -490,7 +571,7 @@
                 $('#submitBookingBtn').prop('disabled', false);
                 $('#numberOfVisitorsInput').val('1');
                 $('#totalAmountInput').val('0.00');
-                $('#appointmentTimeInput').removeAttr('min'); // Xóa thuộc tính min khi đóng modal
+                $('#appointmentTimeInput').removeAttr('min');
             });
 
             $('form').on('submit', function(e) {
@@ -502,7 +583,6 @@
                     return;
                 }
 
-                // Kiểm tra lại ngày đã chọn có phải là ngày trong quá khứ không ngay trước khi submit
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 const selectedDayForSubmission = new Date(selectedDateFromCalendar.getFullYear(), selectedDateFromCalendar.getMonth(), selectedDateFromCalendar.getDate());
@@ -511,21 +591,18 @@
                     alert('Không thể đặt lịch cho ngày trong quá khứ. Vui lòng chọn lại ngày.');
                     return;
                 }
-                
-                // THAY ĐỔI: Kiểm tra giờ trước khi submit (server-side validation cũng cần)
+
                 var [hours, minutes] = timeInput.split(':').map(Number);
                 var combinedDateTimeForValidation = new Date(selectedDayForSubmission.getFullYear(), selectedDayForSubmission.getMonth(), selectedDayForSubmission.getDate(), hours, minutes);
-                
-                // Chỉ kiểm tra giờ nếu ngày được chọn là ngày hiện tại
+
                 if (selectedDayForSubmission.toDateString() === today.toDateString()) {
-                    if (combinedDateTimeForValidation < new Date()) { // So sánh với thời điểm hiện tại chính xác
+                    if (combinedDateTimeForValidation < new Date()) {
                         e.preventDefault();
                         $('#appointmentTimeError').text('Không thể đặt lịch cho giờ trong quá khứ. Vui lòng chọn giờ hiện tại hoặc tương lai.');
                         alert('Không thể đặt lịch cho giờ trong quá khứ. Vui lòng chọn giờ hiện tại hoặc tương lai.');
                         return;
                     }
                 }
-
 
                 var dateFormatted = formatDateForInput(selectedDateFromCalendar);
                 var currentBookingsCount;
@@ -552,18 +629,30 @@
                 if (selectedDateFromCalendar && timeInput) {
                     var [hours, minutes] = timeInput.split(':').map(Number);
 
-                    var finalDateTime = new Date(selectedDateFromCalendar);
+                    // Tạo đối tượng Date với ngày từ calendar và giờ từ input, giữ nguyên múi giờ local của trình duyệt.
+                    // Không cần thêm hay bớt timezoneOffset, vì chúng ta muốn nó là local time.
+                    var finalDateTime = new Date(selectedDateFromCalendar.getFullYear(),
+                                                selectedDateFromCalendar.getMonth(),
+                                                selectedDateFromCalendar.getDate(),
+                                                hours,
+                                                minutes,
+                                                0, // Seconds
+                                                0); // Milliseconds
 
-                    finalDateTime.setHours(hours);
-                    finalDateTime.setMinutes(minutes);
-                    finalDateTime.setSeconds(0);
-                    finalDateTime.setMilliseconds(0);
+                    // CHỈNH SỬA TẠI ĐÂY: Gửi chuỗi ISO 8601 không có thông tin múi giờ.
+                    // Tránh toISOString() vì nó luôn chuyển đổi sang UTC.
+                    // Thay vào đó, tạo một chuỗi "YYYY-MM-DDTHH:mm:ss"
+                    const year = finalDateTime.getFullYear();
+                    const month = (finalDateTime.getMonth() + 1).toString().padStart(2, '0');
+                    const day = finalDateTime.getDate().toString().padStart(2, '0');
+                    const hour = finalDateTime.getHours().toString().padStart(2, '0');
+                    const minute = finalDateTime.getMinutes().toString().padStart(2, '0');
+                    const second = finalDateTime.getSeconds().toString().padStart(2, '0');
 
-                    var timezoneOffsetMilliseconds = finalDateTime.getTimezoneOffset() * 60 * 1000;
+                    // Tạo chuỗi theo định dạng "yyyy-MM-ddTHH:mm:ss"
+                    const localDateTimeString = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
 
-                    var dateInUtc = new Date(finalDateTime.getTime() - timezoneOffsetMilliseconds);
-
-                    $('#appointmentDateTimeHidden').val(dateInUtc.toISOString());
+                    $('#appointmentDateTimeHidden').val(localDateTimeString);
                 } else {
                     e.preventDefault();
                     alert('Lỗi: Ngày hoặc giờ đặt lịch chưa được chọn đầy đủ.');
