@@ -16,6 +16,7 @@ namespace BookingToursWeb.Data
         public DbSet<Booking> Bookings { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Post> Posts { get; set; }
+        public DbSet<PanoramaView> PanoramaViews { get; set; } // THÊM DÒNG NÀY
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -35,9 +36,9 @@ namespace BookingToursWeb.Data
             // Mối quan hệ Booking - User (Many-to-One: Bookings to User)
             // Một Booking thuộc về một User. Một User có nhiều Bookings.
             modelBuilder.Entity<Booking>()
-                .HasOne(b => b.User)              // Booking có một User
-                .WithMany(u => u.Bookings)        // User có nhiều Bookings (SỬ DỤNG Navigation Property mới thêm vào User Model)
-                .HasForeignKey(b => b.UserId)     // Khóa ngoại trong Booking là UserId
+                .HasOne(b => b.User)
+                .WithMany(u => u.Bookings)
+                .HasForeignKey(b => b.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Mối quan hệ Booking - Location (Many-to-One: Bookings to Location)
@@ -50,8 +51,8 @@ namespace BookingToursWeb.Data
             // Mối quan hệ Review - User (Many-to-One: Reviews to User)
             // Một Review thuộc về một User. Một User có nhiều Reviews.
             modelBuilder.Entity<Review>()
-                .HasOne(r => r.User)              // Review có một User
-                .WithMany(u => u.Reviews)         // User có nhiều Reviews (SỬ DỤNG Navigation Property mới thêm vào User Model)
+                .HasOne(r => r.User)
+                .WithMany(u => u.Reviews)
                 .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -65,10 +66,17 @@ namespace BookingToursWeb.Data
             // Mối quan hệ Post - User (Author) (Many-to-One: Posts to User)
             // Một Post có một Author (là User). Một User có nhiều Posts.
             modelBuilder.Entity<Post>()
-                .HasOne(p => p.Author)            // Post có một Author (là User)
-                .WithMany(u => u.Posts)           // User có nhiều Posts (SỬ DỤNG Navigation Property mới thêm vào User Model)
+                .HasOne(p => p.Author)
+                .WithMany(u => u.Posts)
                 .HasForeignKey(p => p.AuthorId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Cấu hình mối quan hệ cho PanoramaView: một Location có nhiều PanoramaViews
+            modelBuilder.Entity<PanoramaView>()
+                .HasOne(pv => pv.Location)           // Một PanoramaView có một Location
+                .WithMany(l => l.PanoramaViews)      // Một Location có nhiều PanoramaViews (sử dụng thuộc tính PanoramaViews trong Location Model)
+                .HasForeignKey(pv => pv.LocationId)  // Khóa ngoại trong PanoramaView là LocationId
+                .OnDelete(DeleteBehavior.Cascade);   // Khi Location bị xóa, các PanoramaView liên quan cũng bị xóa
 
             base.OnModelCreating(modelBuilder);
         }
