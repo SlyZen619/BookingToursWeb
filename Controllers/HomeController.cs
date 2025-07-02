@@ -57,7 +57,7 @@ namespace BookingToursWeb.Controllers
                                               {
                                                   l.Id,
                                                   l.Name,
-                                                  l.IsActive,
+                                                  l.IsActive, // Giữ IsActive trong data
                                                   l.TicketPrice,
                                                   l.ImageUrl
                                               })
@@ -67,37 +67,38 @@ namespace BookingToursWeb.Controllers
             var userId = HttpContext.Session.GetInt32("UserId");
             ViewBag.CurrentUserId = userId;
 
-            // ĐIỀU CHỈNH LOGIC ẨN NÚT "Quay lại chọn địa điểm"
-            // Nút này chỉ ẩn đi khi người dùng vào trang Booking mà không có locationId (tức là muốn chọn địa điểm từ đầu)
-            // Nếu có locationId (đến từ trang PlaceDetails), nút này phải hiển thị
             ViewBag.HideBackButton = !locationId.HasValue;
 
             if (locationId.HasValue)
             {
                 var preselectedLocation = locationsData.FirstOrDefault(l => l.Id == locationId.Value);
 
-                if (preselectedLocation != null && preselectedLocation.IsActive)
+                if (preselectedLocation != null)
                 {
+                    // KHÔNG ĐẶT TempData["ErrorMessage"] Ở ĐÂY NỮA
+                    // Nếu địa điểm không hoạt động, PlaceDetails đã xử lý và hiển thị thông báo.
+                    // Nếu người dùng chọn lại địa điểm không hoạt động từ trang Booking,
+                    // validation client-side hoặc ModelState sẽ xử lý.
                     ViewBag.PreselectedLocationId = preselectedLocation.Id;
                     ViewBag.PreselectedLocationName = preselectedLocation.Name;
                     ViewBag.PreselectedLocationTicketPrice = preselectedLocation.TicketPrice;
-                    // ViewBag.HideBackButton đã được thiết lập ở trên dựa vào locationId.HasValue
+
+                    // Thông báo lỗi nếu địa điểm không hoạt động (cho trường hợp người dùng direct link hoặc thay đổi IsActive sau khi vào trang)
+                    if (!preselectedLocation.IsActive)
+                    {
+                        TempData["ErrorMessage"] = "Địa điểm này hiện không hoạt động. Vui lòng chọn địa điểm khác.";
+                    }
                 }
                 else
                 {
-                    // Nếu locationId không hợp lệ hoặc địa điểm không hoạt động
+                    // Nếu locationId không tồn tại
                     ViewBag.PreselectedLocationId = null;
-                    // Nút quay lại vẫn hiển thị vì người dùng đến từ URL có locationId dù nó không hợp lệ.
-                    TempData["ErrorMessage"] = preselectedLocation == null
-                                            ? "Địa điểm được chọn không tồn tại."
-                                            : "Địa điểm này hiện không hoạt động. Vui lòng chọn địa điểm khác.";
+                    TempData["ErrorMessage"] = "Địa điểm được chọn không tồn tại.";
                 }
             }
             else
             {
-                // Nếu không có locationId được truyền (người dùng vào từ menu)
                 ViewBag.PreselectedLocationId = null;
-                // ViewBag.HideBackButton đã được thiết lập là true ở trên
             }
 
             return View(new Booking());
@@ -328,6 +329,11 @@ namespace BookingToursWeb.Controllers
                 }
 
                 ViewData["Title"] = location.Name;
+
+                // THÊM LOGIC KIỂM TRA ISACTIVE TẠI ĐÂY
+                // Truyền trạng thái hoạt động vào ViewData hoặc ViewBag để View có thể xử lý nút "Đặt lịch"
+                ViewBag.LocationIsActive = location.IsActive;
+
                 return View(location);
             }
             catch (Exception ex)
