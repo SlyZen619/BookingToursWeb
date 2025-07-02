@@ -10,6 +10,23 @@
 
     <hr />
 
+    @* HIỂN THỊ THÔNG BÁO LỖI HOẶC THÀNH CÔNG TỪ TEMPATA *@
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @* KẾT THÚC PHẦN THÔNG BÁO *@
+
     <div class="row">
         <div class="col-md-8 offset-md-2">
             @if (!string.IsNullOrEmpty(Model.ImageUrl))
@@ -60,8 +77,17 @@
             </div>
 
             <div class="text-center mt-4">
-                <a asp-controller="Home" asp-action="Booking" asp-route-locationId="@Model.Id" class="btn btn-primary btn-lg">Đặt lịch tham quan</a>
-                <a asp-controller="Home" asp-action="Index" class="btn btn-secondary btn-lg ml-2">Quay lại trang chủ</a>
+                @* Logic kiểm tra IsActive của địa điểm để hiển thị nút đặt lịch hoặc thông báo không hoạt động *@
+                @if (Model.IsActive) // Dựa vào thuộc tính IsActive của Model trực tiếp
+                {
+                    <a asp-controller="Home" asp-action="Booking" asp-route-locationId="@Model.Id" class="btn btn-primary btn-md">Đặt lịch tham quan</a>
+                }
+                else
+                {
+                    <button class="btn btn-danger btn-md" disabled>Không hoạt động</button>
+                }
+                <a href="#" class="btn btn-info btn-md ml-2">Xem toàn cảnh</a>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-secondary btn-md ml-2">Quay lại trang chủ</a>
             </div>
         </div>
     </div>

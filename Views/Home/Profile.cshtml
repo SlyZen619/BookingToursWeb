@@ -18,14 +18,14 @@
             <div class="card-body">
                 <p><strong>Tên tài khoản:</strong> @Model.User.Username</p>
                 <p><strong>Email:</strong> @Model.User.Email</p>
-                @* Thêm các thông tin cá nhân khác của người dùng nếu có trong Model.User *@
-                @* Ví dụ: <p><strong>Họ tên:</strong> @Model.User.FullName</p> *@
-                @* <p><strong>Số điện thoại:</strong> @Model.User.PhoneNumber</p> *@
-                <a asp-controller="Account" asp-action="EditProfile" class="btn btn-outline-primary btn-sm mt-2">Chỉnh sửa thông tin</a>
+                <a asp-controller="Account" asp-action="EditProfile" class="btn btn-outline-primary btn-sm mt-2">
+                    Chỉnh sửa thông tin
+                </a>
                 @* Liên kết này sẽ được phát triển sau để chỉnh sửa profile *@
             </div>
         </div>
     </div>
+
     <div class="col-md-8">
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-success text-white">
@@ -35,7 +35,8 @@
                 @if (!Model.Bookings.Any())
                 {
                     <div class="alert alert-info" role="alert">
-                        Bạn chưa có lịch đặt tour nào. Hãy <a asp-controller="Home" asp-action="Booking">đặt lịch ngay</a>!
+                        Bạn chưa có lịch đặt tour nào. Hãy
+                        <a asp-controller="Home" asp-action="Booking">đặt lịch ngay</a>!
                     </div>
                 }
                 else
@@ -55,46 +56,44 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var item in Model.Bookings)
-                                {
-                                    <tr>
-                                        <td>
-                                            @if (item.Location != null)
-                                            {
-                                                @item.Location.Name
-                                            }
-                                            else
-                                            {
-                                                <span>Không rõ</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @item.AppointmentDate.ToString("dd/MM/yyyy HH:mm")
-                                        </td>
-                                        <td>
-                                            @item.NumberOfVisitors
-                                        </td>
-                                        <td>
-                                            @item.TotalAmount.ToString("N0") VNĐ
-                                        </td>
-                                        <td>
-                                            <span class="badge @(item.Status == "Pending" ? "bg-warning text-dark" :
-                                                                                                                  item.Status == "Confirmed" ? "bg-success" :
-                                                                                                                  "bg-danger")">
-                                        @item.Status
-                                    </span>
-                                </td>
-                                <td>
-                                    @(string.IsNullOrEmpty(item.SpecialNotes) ? "Không có" : item.SpecialNotes)
-                                </td>
-                                <td>
-                                    @item.CreatedAt.ToString("dd/MM/yyyy HH:mm")
-                                </td>
-                                <td>
-                                    @item.UpdatedAt.ToString("dd/MM/yyyy HH:mm")
-                                </td>
-                            </tr>
-                                                        }
+                            @foreach (var item in Model.Bookings)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (item.Location != null)
+                                        {
+                                            @item.Location.Name
+                                        }
+                                        else
+                                        {
+                                            <span>Không rõ</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @item.AppointmentDate.ToString("dd/MM/yyyy HH:mm")
+                                    </td>
+                                    <td>
+                                        @item.NumberOfVisitors
+                                    </td>
+                                    <td>
+                                        @item.TotalAmount.ToString("N0") VNĐ
+                                    </td>
+                                    <td>
+                                        <span class="badge @(item.Status == "Pending" ? "bg-warning text-dark" : item.Status == "Confirmed" ? "bg-success" : "bg-danger")">
+                                            @item.Status
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @(string.IsNullOrEmpty(item.SpecialNotes) ? "Không có" : item.SpecialNotes)
+                                    </td>
+                                    <td>
+                                        @item.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                    </td>
+                                    <td>
+                                        @item.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                    </td>
+                                </tr>
+                            }
                             </tbody>
                         </table>
                     </div>
@@ -103,3 +102,7 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    @* Không cần JavaScript để chuyển đổi múi giờ ở đây nữa nếu dùng ToLocalTime() *@
+}
