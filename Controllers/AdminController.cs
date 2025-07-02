@@ -1,23 +1,26 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+﻿using BCrypt.Net; // Thêm cho BCrypt, đảm bảo bạn đã cài đặt package BCrypt.Net-Next
 using BookingToursWeb.Data;
 using BookingToursWeb.Models;
+using BookingToursWeb.ViewModels;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System; // Thêm để sử dụng DateTime
-using System.Threading.Tasks;
-using System.Linq;
 using System.Collections.Generic; // Thêm để sử dụng List
-using BCrypt.Net; // Thêm cho BCrypt, đảm bảo bạn đã cài đặt package BCrypt.Net-Next
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace BookingToursWeb.Controllers
 {
     public class AdminController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<AdminController> _logger;
 
-        public AdminController(ApplicationDbContext context)
+        public AdminController(ApplicationDbContext context, ILogger<AdminController> logger) // THÊM ILogger<AdminController> logger
         {
             _context = context;
+            _logger = logger; // GÁN GIÁ TRỊ CHO _logger
         }
 
         private bool IsCurrentUserAdmin()
@@ -386,18 +389,54 @@ namespace BookingToursWeb.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
-            var location = await _context.Locations.FindAsync(id);
+            // Tải địa điểm CÙNG VỚI các lịch hẹn và đánh giá liên quan
+            var location = await _context.Locations
+                                         .Include(l => l.Bookings) // RẤT QUAN TRỌNG: Tải Bookings liên quan
+                                         .Include(l => l.Reviews)  // RẤT QUAN TRỌNG: Tải Reviews liên quan
+                                         .FirstOrDefaultAsync(m => m.Id == id);
+
             if (location == null)
             {
                 TempData["ErrorMessage"] = "Không tìm thấy địa điểm để xóa.";
-                return NotFound();
+                // Thay vì NotFound(), chúng ta sẽ chuyển hướng về ManageLocations để hiển thị lỗi thân thiện
+                return RedirectToAction(nameof(ManageLocations));
             }
 
-            _context.Locations.Remove(location);
-            await _context.SaveChangesAsync();
+            // -------------------------------------------------------------------
+            // THÊM LOGIC KIỂM TRA SỐ LƯỢNG LỊCH HẸN VÀ ĐÁNH GIÁ TRƯỚC KHI XÓA
+            // -------------------------------------------------------------------
 
-            TempData["SuccessMessage"] = "Địa điểm đã được xóa thành công.";
-            return RedirectToAction(nameof(ManageLocations));
+            if (location.Bookings.Any())
+            {
+                TempData["ErrorMessage"] = "Không thể xóa địa điểm này vì có các lịch hẹn liên quan. Vui lòng xóa tất cả các lịch hẹn của địa điểm này trước khi xóa.";
+                return RedirectToAction(nameof(ManageLocations)); // Chuyển hướng về trang quản lý để hiển thị thông báo
+            }
+
+            if (location.Reviews.Any())
+            {
+                TempData["ErrorMessage"] = "Không thể xóa địa điểm này vì có các đánh giá liên quan. Vui lòng xóa tất cả các đánh giá của địa điểm này trước khi xóa.";
+                return RedirectToAction(nameof(ManageLocations)); // Chuyển hướng về trang quản lý để hiển thị thông báo
+            }
+
+            // -------------------------------------------------------------------
+            // Nếu không có lịch hẹn hoặc đánh giá liên quan, tiến hành xóa
+            // -------------------------------------------------------------------
+            try
+            {
+                _context.Locations.Remove(location);
+                await _context.SaveChangesAsync(); // Thao tác xóa thực sự trong database
+
+                TempData["SuccessMessage"] = "Địa điểm đã được xóa thành công.";
+                return RedirectToAction(nameof(ManageLocations));
+            }
+            catch (DbUpdateException ex)
+            {
+                // Mặc dù chúng ta đã kiểm tra, nhưng đây là lớp bảo vệ cuối cùng nếu có lỗi ràng buộc khác xảy ra.
+                // Ví dụ: có thể có một ràng buộc khác mà chúng ta chưa kiểm tra bằng .Any()
+                TempData["ErrorMessage"] = $"Đã xảy ra lỗi hệ thống khi xóa địa điểm. Vui lòng thử lại. Lỗi chi tiết: {ex.Message}";
+                // Bạn có thể log `ex` chi tiết hơn nếu cần để debug.
+                return RedirectToAction(nameof(ManageLocations));
+            }
         }
 
         // ====================================================================
@@ -761,5 +800,129 @@ namespace BookingToursWeb.Controllers
             ViewData["Title"] = "Quản lý Bài đăng";
             return View();
         }
+
+        // GET: Admin/ManagePanoramaViews (Action danh sách địa điểm có phân trang thủ công)
+        public async Task<IActionResult> ManagePanoramaViews(int page = 1)
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang này.";
+                return RedirectToAction("Index", "Home");
+            }
+
+            ViewData["Title"] = "Quản lý Panorama theo Địa điểm";
+
+            int pageSize = 10;
+            int pageNumber = page;
+
+            int totalLocations = await _context.Locations.CountAsync();
+            int totalPages = (int)Math.Ceiling((double)totalLocations / pageSize);
+
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageNumber > totalPages && totalPages > 0) pageNumber = totalPages;
+            if (totalPages == 0) pageNumber = 1;
+
+            var locations = await _context.Locations
+                                        .OrderBy(l => l.Name)
+                                        .Skip((pageNumber - 1) * pageSize)
+                                        .Take(pageSize)
+                                        .ToListAsync();
+
+            ViewBag.PageNumber = pageNumber;
+            ViewBag.PageSize = pageSize;
+            ViewBag.TotalPages = totalPages;
+            ViewBag.HasPreviousPage = (pageNumber > 1);
+            ViewBag.HasNextPage = (pageNumber < totalPages);
+            ViewBag.TotalLocations = totalLocations;
+
+            return View(locations);
+        }
+
+        // GET: Admin/ManagePanoramaForLocation/{locationId}
+        public async Task<IActionResult> ManagePanoramaForLocation(int locationId)
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang này.";
+                return RedirectToAction("Index", "Home");
+            }
+
+            var location = await _context.Locations
+                                        .Include(l => l.PanoramaViews) // Tải kèm các PanoramaViews liên quan
+                                        .FirstOrDefaultAsync(l => l.Id == locationId);
+
+            if (location == null)
+            {
+                TempData["ErrorMessage"] = "Địa điểm không tồn tại.";
+                return RedirectToAction(nameof(ManagePanoramaViews));
+            }
+
+            ViewData["Title"] = $"Quản lý Panorama cho {location.Name}";
+
+            var model = new LocationPanoramaViewModel
+            {
+                Location = location,
+                PanoramaViews = location.PanoramaViews.OrderBy(pv => pv.Name).ToList(),
+                NewPanoramaView = new PanoramaView { LocationId = location.Id } // Khởi tạo LocationId cho form thêm mới
+            };
+
+            return View(model);
+        }
+
+        // POST: Admin/AddPanoramaView
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddPanoramaView(LocationPanoramaViewModel model)
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền thực hiện hành động này.";
+                return RedirectToAction("Index", "Home");
+            }
+
+            // Đảm bảo LocationId được đặt đúng
+            if (model.NewPanoramaView.LocationId == 0 && model.Location?.Id > 0)
+            {
+                model.NewPanoramaView.LocationId = model.Location.Id;
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Add(model.NewPanoramaView);
+                    await _context.SaveChangesAsync();
+
+                    TempData["SuccessMessage"] = "Ảnh panorama đã được thêm thành công!";
+                    return RedirectToAction(nameof(ManagePanoramaForLocation), new { locationId = model.NewPanoramaView.LocationId });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Lỗi khi thêm ảnh panorama mới."); // Dòng này giờ sẽ hoạt động
+                    TempData["ErrorMessage"] = "Đã xảy ra lỗi khi thêm ảnh panorama: " + ex.Message;
+                }
+            }
+            else
+            {
+                TempData["ErrorMessage"] = "Vui lòng kiểm tra lại thông tin bạn đã nhập.";
+            }
+
+            // Nếu có lỗi (ModelState không hợp lệ hoặc Exception), tải lại dữ liệu để hiển thị lại View
+            var location = await _context.Locations
+                                        .Include(l => l.PanoramaViews)
+                                        .FirstOrDefaultAsync(l => l.Id == model.NewPanoramaView.LocationId);
+            if (location != null)
+            {
+                model.Location = location;
+                model.PanoramaViews = location.PanoramaViews.OrderBy(pv => pv.Name).ToList();
+            }
+            else
+            {
+                // Xử lý trường hợp không tìm thấy location (rất hiếm nếu LocationId đúng)
+                return RedirectToAction(nameof(ManagePanoramaViews));
+            }
+            return View(nameof(ManagePanoramaForLocation), model);
+        }
+
     }
 }
