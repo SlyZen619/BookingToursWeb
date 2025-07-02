@@ -1,0 +1,150 @@
+﻿@model BookingToursWeb.ViewModels.LocationPanoramaViewModel
+
+@{
+    ViewData["Title"] = Model.Location != null ? $"Quản lý Panorama cho {Model.Location.Name}" : "Quản lý Panorama";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">@ViewData["Title"]</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="ManagePanoramaViews" class="btn btn-secondary btn-sm">
+            <i class="fas fa-arrow-left"></i> Quay lại danh sách Địa điểm
+        </a>
+    </div>
+</div>
+
+@* Hiển thị thông báo thành công/lỗi *@
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<h3>Thêm Ảnh Panorama Mới cho @Model.Location?.Name</h3>
+<form asp-action="AddPanoramaView" method="post" class="needs-validation" novalidate>
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    @Html.AntiForgeryToken() @* Thêm token chống CSRF *@
+    <input type="hidden" asp-for="NewPanoramaView.LocationId" value="@(Model.Location?.Id ?? 0)" />
+
+    <div class="mb-3">
+        <label asp-for="NewPanoramaView.Name" class="form-label"></label>
+        <input asp-for="NewPanoramaView.Name" class="form-control" required />
+        <div class="invalid-feedback">Vui lòng nhập tên vị trí panorama.</div>
+        <span asp-validation-for="NewPanoramaView.Name" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="NewPanoramaView.ImageUrl" class="form-label"></label>
+        <input asp-for="NewPanoramaView.ImageUrl" class="form-control" required />
+        <div class="invalid-feedback">Vui lòng nhập URL ảnh panorama.</div>
+        <span asp-validation-for="NewPanoramaView.ImageUrl" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="NewPanoramaView.Description" class="form-label"></label>
+        <textarea asp-for="NewPanoramaView.Description" class="form-control" rows="3"></textarea>
+        <span asp-validation-for="NewPanoramaView.Description" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Thêm Ảnh Panorama</button>
+</form>
+
+<hr class="my-4" />
+
+<h3>Danh sách Ảnh Panorama hiện có cho @Model.Location?.Name</h3>
+@if (Model.PanoramaViews != null && Model.PanoramaViews.Any())
+{
+    <div class="row row-cols-1 row-cols-md-2 g-4">
+        @foreach (var panorama in Model.PanoramaViews)
+        {
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <img src="@panorama.ImageUrl" class="card-img-top img-fluid" alt="@panorama.Name" style="max-height: 200px; object-fit: cover;">
+                    <div class="card-body">
+                        <h5 class="card-title">@panorama.Name</h5>
+                        <p class="card-text">@panorama.Description</p>
+                    </div>
+                    <div class="card-footer d-flex justify-content-end">
+                        <a asp-action="EditPanoramaView" asp-route-id="@panorama.Id" class="btn btn-warning btn-sm me-2">
+                            <i class="fas fa-edit"></i> Sửa
+                        </a>
+                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="@panorama.Id" data-name="@panorama.Name">
+                            <i class="fas fa-trash-alt"></i> Xóa
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <p>Chưa có ảnh panorama nào cho địa điểm này.</p>
+}
+
+@* Modal xác nhận xóa *@
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Bạn có chắc chắn muốn xóa ảnh panorama "<span id="panoramaToDeleteName"></span>" này không?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <form asp-action="DeletePanoramaView" method="post" id="deletePanoramaForm">
+                    @Html.AntiForgeryToken() @* Thêm token chống CSRF *@
+                    <input type="hidden" name="id" id="panoramaToDeleteId" />
+                    <button type="submit" class="btn btn-danger">Xóa</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script>
+        // Script để xử lý modal xóa
+        var deleteModal = document.getElementById('deleteModal');
+        deleteModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget; // Nút kích hoạt modal
+            var panoramaId = button.getAttribute('data-id');
+            var panoramaName = button.getAttribute('data-name');
+
+            var modalBodyInputName = deleteModal.querySelector('#panoramaToDeleteName');
+            var modalFormInputId = deleteModal.querySelector('#panoramaToDeleteId');
+
+            modalBodyInputName.textContent = panoramaName;
+            modalFormInputId.value = panoramaId;
+        });
+
+        // Kích hoạt validation của Bootstrap 5
+        (function () {
+            'use strict'
+            var forms = document.querySelectorAll('.needs-validation')
+            Array.prototype.slice.call(forms)
+                .forEach(function (form) {
+                    form.addEventListener('submit', function (event) {
+                        if (!form.checkValidity()) {
+                            event.preventDefault()
+                            event.stopPropagation()
+                        }
+                        form.classList.add('was-validated')
+                    }, false)
+                })
+        })()
+    </script>
+}

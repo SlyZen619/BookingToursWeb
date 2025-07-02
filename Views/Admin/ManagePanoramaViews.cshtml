@@ -1,0 +1,139 @@
+﻿@model IEnumerable<BookingToursWeb.Models.Location>
+
+@{
+    ViewData["Title"] = "Quản lý Panorama theo Địa điểm";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">@ViewData["Title"]</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="CreateLocation" class="btn btn-success btn-sm"> @* Nút thêm địa điểm mới nếu có *@
+            <i class="fas fa-plus"></i> Thêm Địa điểm
+        </a>
+    </div>
+</div>
+
+@* Hiển thị thông báo thành công/lỗi *@
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="table-responsive">
+    <table class="table table-striped table-sm">
+        <thead>
+            <tr>
+                <th>Tên Địa điểm</th>
+                <th>Địa chỉ</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                @foreach (var location in Model)
+                {
+                    <tr>
+                        <td>@location.Name</td>
+                        <td>@location.Address</td>
+                        <td>
+                            @if (location.IsActive)
+                            {
+                                <span class="badge bg-success">Hoạt động</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Không hoạt động</span>
+                            }
+                        </td>
+                        <td>
+                            <a asp-action="ManagePanoramaForLocation" asp-route-locationId="@location.Id" class="btn btn-info btn-sm">
+                                <i class="fas fa-images"></i> Quản lý ảnh
+                            </a>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="4" class="text-center">Không có địa điểm nào để hiển thị.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@* Phân trang *@
+<nav aria-label="Page navigation example">
+    <ul class="pagination justify-content-center">
+        <li class="page-item @(ViewBag.HasPreviousPage ? "" : "disabled")">
+            <a class="page-link" asp-action="ManagePanoramaViews" asp-route-page="@(ViewBag.PageNumber - 1)">Trước</a>
+        </li>
+        @for (int i = 1; i <= ViewBag.TotalPages; i++)
+        {
+            <li class="page-item @(i == ViewBag.PageNumber ? "active" : "")">
+                <a class="page-link" asp-action="ManagePanoramaViews" asp-route-page="@i">@i</a>
+            </li>
+        }
+        <li class="page-item @(ViewBag.HasNextPage ? "" : "disabled")">
+            <a class="page-link" asp-action="ManagePanoramaViews" asp-route-page="@(ViewBag.PageNumber + 1)">Tiếp</a>
+        </li>
+    </ul>
+</nav>
+
+@* Modal xác nhận xóa địa điểm *@
+<div class="modal fade" id="deleteLocationModal" tabindex="-1" aria-labelledby="deleteLocationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteLocationModalLabel">Xác nhận xóa địa điểm</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Bạn có chắc chắn muốn xóa địa điểm "<span id="locationToDeleteName"></span>" này không?
+                <p class="text-danger">Lưu ý: Việc xóa địa điểm này sẽ xóa tất cả các booking, reviews, và panorama views liên quan!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <form asp-action="DeleteLocation" method="post" id="deleteLocationForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="locationToDeleteId" />
+                    <button type="submit" class="btn btn-danger">Xóa</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script> @* Đảm bảo đường dẫn font-awesome đúng *@
+    <script>
+        // Script để xử lý modal xóa địa điểm
+        var deleteLocationModal = document.getElementById('deleteLocationModal');
+        deleteLocationModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget; // Nút kích hoạt modal
+            var locationId = button.getAttribute('data-id');
+            var locationName = button.getAttribute('data-name');
+
+            var modalBodyInputName = deleteLocationModal.querySelector('#locationToDeleteName');
+            var modalFormInputId = deleteLocationModal.querySelector('#locationToDeleteId');
+
+            modalBodyInputName.textContent = locationName;
+            modalFormInputId.value = locationId;
+        });
+    </script>
+}
