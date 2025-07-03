@@ -17,10 +17,10 @@ namespace BookingToursWeb.Models
         [Required(ErrorMessage = "Tiêu đề không được để trống.")]
         [StringLength(500)]
         [Display(Name = "Tiêu Đề")]
-        public string Title { get; set; }
+        public required string Title { get; set; }
 
         [Required(ErrorMessage = "Nội dung không được để trống.")]
-        public string Content { get; set; } // Content có thể rất dài, không giới hạn độ dài nếu dùng string
+        public required string Content { get; set; } // Content có thể rất dài, không giới hạn độ dài nếu dùng string
 
         [StringLength(100)]
         [Display(Name = "Danh Mục")]

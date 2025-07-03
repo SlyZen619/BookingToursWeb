@@ -7,6 +7,6 @@ namespace BookingToursWeb.Models
         [Required(ErrorMessage = "Email là bắt buộc.")]
         [EmailAddress(ErrorMessage = "Địa chỉ Email không hợp lệ.")]
         [Display(Name = "Email")]
-        public string Email { get; set; }
+        public required string Email { get; set; }
     }
 }

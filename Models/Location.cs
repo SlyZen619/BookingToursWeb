@@ -58,7 +58,7 @@ namespace BookingToursWeb.Models
         // --- Thuộc tính điều hướng (Navigation Properties) ---
         public ICollection<Booking> Bookings { get; set; } = new List<Booking>(); // Khởi tạo tại khai báo
         public ICollection<Review> Reviews { get; set; } = new List<Review>(); // Khởi tạo tại khai báo
-        public ICollection<PanoramaView> PanoramaViews { get; set; } = new List<PanoramaView>(); // THÊM DÒNG NÀY
+        public ICollection<PanoramaPoint>? PanoramaPoints { get; set; }
         // Có thể bỏ constructor rỗng nếu đã khởi tạo tất cả các thuộc tính trên khai báo
         // hoặc giữ nếu bạn có logic khởi tạo khác phức tạp hơn
         // public Location()
