@@ -316,8 +316,8 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManagePanoramaViews" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManagePanoramaViews">
-                            <span data-feather="image" class="align-text-bottom"></span> @* Sử dụng icon image hoặc camera *@
+                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManagePanoramas" || ViewContext.RouteData.Values["Action"]?.ToString() == "ListPanoramaPoints" || ViewContext.RouteData.Values["Action"]?.ToString() == "AddPanoramaPoint" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManagePanoramas">
+                            <span data-feather="image" class="align-text-bottom"></span>
                             Quản lý Panorama
                         </a>
                     </li>
