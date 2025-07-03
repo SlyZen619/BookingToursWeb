@@ -162,7 +162,7 @@ namespace BookingToursWeb.Controllers
         }
 
         // GET: Account/ResetPassword (Nhận email từ TempData, hiển thị form đổi mật khẩu)
-        [AllowAnonymous]
+        // Trong AccountController, action ResetPassword (GET)
         public IActionResult ResetPassword()
         {
             ViewData["Title"] = "Đặt lại mật khẩu";
@@ -174,7 +174,12 @@ namespace BookingToursWeb.Controllers
                 return RedirectToAction(nameof(ForgotPassword));
             }
 
-            var model = new ResetPasswordViewModel { Email = userEmail };
+            var model = new ResetPasswordViewModel
+            {
+                Email = userEmail,
+                NewPassword = string.Empty, // Khởi tạo với chuỗi rỗng để tránh lỗi "Required member must be set"
+                ConfirmPassword = string.Empty // Khởi tạo với chuỗi rỗng
+            };
             return View(model);
         }
 
