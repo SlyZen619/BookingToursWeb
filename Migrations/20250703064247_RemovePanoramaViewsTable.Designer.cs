@@ -4,6 +4,7 @@ using BookingToursWeb.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BookingToursWeb.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250703064247_RemovePanoramaViewsTable")]
+    partial class RemovePanoramaViewsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -121,38 +124,6 @@ namespace BookingToursWeb.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Locations");
-                });
-
-            modelBuilder.Entity("BookingToursWeb.Models.PanoramaPoint", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("LocationId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LocationId");
-
-                    b.ToTable("PanoramaPoints");
                 });
 
             modelBuilder.Entity("BookingToursWeb.Models.Post", b =>
@@ -300,17 +271,6 @@ namespace BookingToursWeb.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("BookingToursWeb.Models.PanoramaPoint", b =>
-                {
-                    b.HasOne("BookingToursWeb.Models.Location", "Location")
-                        .WithMany("PanoramaPoints")
-                        .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Location");
-                });
-
             modelBuilder.Entity("BookingToursWeb.Models.Post", b =>
                 {
                     b.HasOne("BookingToursWeb.Models.User", "Author")
@@ -344,8 +304,6 @@ namespace BookingToursWeb.Migrations
             modelBuilder.Entity("BookingToursWeb.Models.Location", b =>
                 {
                     b.Navigation("Bookings");
-
-                    b.Navigation("PanoramaPoints");
 
                     b.Navigation("Reviews");
                 });
