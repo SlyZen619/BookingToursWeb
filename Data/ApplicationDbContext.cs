@@ -16,7 +16,8 @@ namespace BookingToursWeb.Data
         public DbSet<Booking> Bookings { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Post> Posts { get; set; }
-        public DbSet<PanoramaView> PanoramaViews { get; set; } // THÊM DÒNG NÀY
+        public DbSet<BookingToursWeb.Models.PanoramaPoint> PanoramaPoints { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -71,12 +72,6 @@ namespace BookingToursWeb.Data
                 .HasForeignKey(p => p.AuthorId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Cấu hình mối quan hệ cho PanoramaView: một Location có nhiều PanoramaViews
-            modelBuilder.Entity<PanoramaView>()
-                .HasOne(pv => pv.Location)           // Một PanoramaView có một Location
-                .WithMany(l => l.PanoramaViews)      // Một Location có nhiều PanoramaViews (sử dụng thuộc tính PanoramaViews trong Location Model)
-                .HasForeignKey(pv => pv.LocationId)  // Khóa ngoại trong PanoramaView là LocationId
-                .OnDelete(DeleteBehavior.Cascade);   // Khi Location bị xóa, các PanoramaView liên quan cũng bị xóa
 
             base.OnModelCreating(modelBuilder);
         }
