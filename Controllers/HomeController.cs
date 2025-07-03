@@ -166,15 +166,15 @@ namespace BookingToursWeb.Controllers
             if (!ModelState.IsValid)
             {
                 var locationsDataForErrors = await _context.Locations
-                                                         .Select(l => new
-                                                         {
-                                                             l.Id,
-                                                             l.Name,
-                                                             l.IsActive,
-                                                             l.TicketPrice,
-                                                             l.ImageUrl
-                                                         })
-                                                         .ToListAsync();
+                                                           .Select(l => new
+                                                           {
+                                                               l.Id,
+                                                               l.Name,
+                                                               l.IsActive,
+                                                               l.TicketPrice,
+                                                               l.ImageUrl
+                                                           })
+                                                           .ToListAsync();
                 ViewBag.AllLocationsData = JsonConvert.SerializeObject(locationsDataForErrors);
                 ViewBag.CurrentUserId = userId;
 
@@ -209,15 +209,15 @@ namespace BookingToursWeb.Controllers
                 ModelState.AddModelError(string.Empty, "Có lỗi xảy ra khi xử lý đặt lịch của bạn. Vui lòng thử lại.");
 
                 var locationsDataForErrors = await _context.Locations
-                                                         .Select(l => new
-                                                         {
-                                                             l.Id,
-                                                             l.Name,
-                                                             l.IsActive,
-                                                             l.TicketPrice,
-                                                             l.ImageUrl
-                                                         })
-                                                         .ToListAsync();
+                                                           .Select(l => new
+                                                           {
+                                                               l.Id,
+                                                               l.Name,
+                                                               l.IsActive,
+                                                               l.TicketPrice,
+                                                               l.ImageUrl
+                                                           })
+                                                           .ToListAsync();
                 ViewBag.AllLocationsData = JsonConvert.SerializeObject(locationsDataForErrors);
                 ViewBag.CurrentUserId = userId;
 
@@ -344,6 +344,60 @@ namespace BookingToursWeb.Controllers
             }
         }
 
+        // --- Bổ sung Action PanoramaPointsForLocation ---
+        [HttpGet]
+        public async Task<IActionResult> PanoramaPointsForLocation(int locationId)
+        {
+            // 1. Tìm thông tin chi tiết của Địa điểm (Location) đó
+            // Chúng ta cần tên của địa điểm để hiển thị trên tiêu đề trang.
+            var location = await _context.Locations
+                                         .FirstOrDefaultAsync(l => l.Id == locationId);
+
+            if (location == null)
+            {
+                // Nếu không tìm thấy địa điểm, chuyển hướng về trang chủ hoặc thông báo lỗi
+                TempData["ErrorMessage"] = "Địa điểm không tồn tại hoặc không tìm thấy.";
+                return RedirectToAction("Index", "Home");
+            }
+
+            // 2. Lấy danh sách các PanoramaPoint liên quan đến Địa điểm này
+            // Bao gồm thông tin Location để có thể truy cập tên địa điểm từ PanoramaPoint (nếu cần)
+            var panoramaPoints = await _context.PanoramaPoints
+                                               .Where(p => p.LocationId == locationId)
+                                               .OrderBy(p => p.Name) // Sắp xếp theo tên điểm nhìn
+                                               .ToListAsync();
+
+            // 3. Chuẩn bị dữ liệu để truyền sang View
+            // Bạn có thể tạo một ViewModel tùy chỉnh nếu cần nhiều thông tin phức tạp hơn,
+            // nhưng với yêu cầu này, truyền danh sách panorama và thông tin location qua ViewData là đủ.
+            ViewData["LocationName"] = location.Name;
+            ViewData["LocationId"] = locationId; // Để nút quay lại PlaceDetails.cshtml có thể dùng
+
+            // Truyền danh sách panorama points tới View
+            return View(panoramaPoints);
+        }
+        // --- Hết Bổ sung Action PanoramaPointsForLocation ---
+
+        [HttpGet]
+        public async Task<IActionResult> ViewPanorama(int id)
+        {
+            var panoramaPoint = await _context.PanoramaPoints
+                                            .Include(p => p.Location) // Bao gồm Location để có tên địa điểm
+                                            .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (panoramaPoint == null)
+            {
+                TempData["ErrorMessage"] = "Không tìm thấy điểm nhìn panorama này.";
+                return RedirectToAction("Index", "Home"); // Hoặc quay về trang danh sách panorama
+            }
+
+            ViewData["Title"] = $"Xem Panorama: {panoramaPoint.Name}";
+            ViewData["LocationId"] = panoramaPoint.LocationId; // Để nút quay lại trang chi tiết địa điểm
+
+            // Truyền đối tượng PanoramaPoint đến View
+            return View(panoramaPoint);
+        }
+
         public IActionResult Privacy()
         {
             ViewData["Title"] = "Chính sách bảo mật";
@@ -355,5 +409,7 @@ namespace BookingToursWeb.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
+
+
     }
 }

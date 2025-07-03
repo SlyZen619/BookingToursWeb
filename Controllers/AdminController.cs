@@ -1,14 +1,17 @@
 ﻿using BCrypt.Net; // Thêm cho BCrypt, đảm bảo bạn đã cài đặt package BCrypt.Net-Next
 using BookingToursWeb.Data;
 using BookingToursWeb.Models;
-using BookingToursWeb.ViewModels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using System; // Thêm để sử dụng DateTime
 using System.Collections.Generic; // Thêm để sử dụng List
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting; // Thêm dòng này để sử dụng IWebHostEnvironment
+using System.IO;
+
 
 namespace BookingToursWeb.Controllers
 {
@@ -16,11 +19,13 @@ namespace BookingToursWeb.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<AdminController> _logger;
+        private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public AdminController(ApplicationDbContext context, ILogger<AdminController> logger) // THÊM ILogger<AdminController> logger
+        public AdminController(ApplicationDbContext context, ILogger<AdminController> logger, IWebHostEnvironment webHostEnvironment) // THÊM ILogger<AdminController> logger
         {
             _context = context;
             _logger = logger; // GÁN GIÁ TRỊ CHO _logger
+            _webHostEnvironment = webHostEnvironment;
         }
 
         private bool IsCurrentUserAdmin()
@@ -801,127 +806,147 @@ namespace BookingToursWeb.Controllers
             return View();
         }
 
-        // GET: Admin/ManagePanoramaViews (Action danh sách địa điểm có phân trang thủ công)
-        public async Task<IActionResult> ManagePanoramaViews(int page = 1)
+        [HttpGet]
+        public async Task<IActionResult> ManagePanoramas()
         {
-            if (!IsCurrentUserAdmin())
-            {
-                TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang này.";
-                return RedirectToAction("Index", "Home");
-            }
-
+            var locations = await _context.Locations.OrderBy(l => l.Name).ToListAsync();
             ViewData["Title"] = "Quản lý Panorama theo Địa điểm";
-
-            int pageSize = 10;
-            int pageNumber = page;
-
-            int totalLocations = await _context.Locations.CountAsync();
-            int totalPages = (int)Math.Ceiling((double)totalLocations / pageSize);
-
-            if (pageNumber < 1) pageNumber = 1;
-            if (pageNumber > totalPages && totalPages > 0) pageNumber = totalPages;
-            if (totalPages == 0) pageNumber = 1;
-
-            var locations = await _context.Locations
-                                        .OrderBy(l => l.Name)
-                                        .Skip((pageNumber - 1) * pageSize)
-                                        .Take(pageSize)
-                                        .ToListAsync();
-
-            ViewBag.PageNumber = pageNumber;
-            ViewBag.PageSize = pageSize;
-            ViewBag.TotalPages = totalPages;
-            ViewBag.HasPreviousPage = (pageNumber > 1);
-            ViewBag.HasNextPage = (pageNumber < totalPages);
-            ViewBag.TotalLocations = totalLocations;
-
             return View(locations);
         }
 
-        // GET: Admin/ManagePanoramaForLocation/{locationId}
-        public async Task<IActionResult> ManagePanoramaForLocation(int locationId)
+        [HttpGet]
+        public async Task<IActionResult> ListPanoramaPoints(int locationId)
         {
-            if (!IsCurrentUserAdmin())
-            {
-                TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang này.";
-                return RedirectToAction("Index", "Home");
-            }
-
             var location = await _context.Locations
-                                        .Include(l => l.PanoramaViews) // Tải kèm các PanoramaViews liên quan
-                                        .FirstOrDefaultAsync(l => l.Id == locationId);
+                                         .FirstOrDefaultAsync(l => l.Id == locationId);
 
             if (location == null)
             {
                 TempData["ErrorMessage"] = "Địa điểm không tồn tại.";
-                return RedirectToAction(nameof(ManagePanoramaViews));
+                return RedirectToAction(nameof(ManagePanoramas)); // Quay lại trang quản lý tổng quan
             }
 
-            ViewData["Title"] = $"Quản lý Panorama cho {location.Name}";
+            ViewData["Title"] = $"Danh sách Panorama cho: {location.Name}";
+            ViewData["CurrentLocationId"] = locationId;
+            ViewData["LocationName"] = location.Name;
 
-            var model = new LocationPanoramaViewModel
-            {
-                Location = location,
-                PanoramaViews = location.PanoramaViews.OrderBy(pv => pv.Name).ToList(),
-                NewPanoramaView = new PanoramaView { LocationId = location.Id } // Khởi tạo LocationId cho form thêm mới
-            };
+            // Lấy các PanoramaPoint thuộc về địa điểm này
+            var panoramaPoints = await _context.PanoramaPoints
+                                               .Where(p => p.LocationId == locationId)
+                                               .OrderBy(p => p.Name)
+                                               .ToListAsync();
 
-            return View(model);
+            return View(panoramaPoints);
         }
 
-        // POST: Admin/AddPanoramaView
+        [HttpGet]
+        public async Task<IActionResult> AddPanoramaPoint(int locationId)
+        {
+            var location = await _context.Locations.FindAsync(locationId);
+            if (location == null)
+            {
+                TempData["ErrorMessage"] = "Địa điểm không tồn tại.";
+                return RedirectToAction(nameof(ManagePanoramas));
+            }
+
+            var viewModel = new AddPanoramaPointViewModel // Sử dụng ViewModel từ namespace BookingToursWeb.Models
+            {
+                LocationId = locationId,
+                Location = location
+            };
+            ViewData["Title"] = $"Thêm Điểm Nhìn Panorama cho {location.Name}";
+            return View(viewModel);
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddPanoramaView(LocationPanoramaViewModel model)
+        public async Task<IActionResult> AddPanoramaPoint(AddPanoramaPointViewModel model) // Sử dụng ViewModel từ namespace BookingToursWeb.Models
         {
-            if (!IsCurrentUserAdmin())
+            var location = await _context.Locations.FindAsync(model.LocationId);
+            if (location == null)
             {
-                TempData["ErrorMessage"] = "Bạn không có quyền thực hiện hành động này.";
-                return RedirectToAction("Index", "Home");
+                TempData["ErrorMessage"] = "Địa điểm không tồn tại.";
+                return RedirectToAction(nameof(ManagePanoramas));
+            }
+            model.Location = location;
+
+            if (!ModelState.IsValid)
+            {
+                ViewData["Title"] = $"Thêm Điểm Nhìn Panorama cho {model.Location.Name}";
+                return View(model);
             }
 
-            // Đảm bảo LocationId được đặt đúng
-            if (model.NewPanoramaView.LocationId == 0 && model.Location?.Id > 0)
+            if (model.UploadedImageFile == null || model.UploadedImageFile.Length == 0)
             {
-                model.NewPanoramaView.LocationId = model.Location.Id;
+                ModelState.AddModelError("UploadedImageFile", "Vui lòng chọn một ảnh panorama để tải lên.");
+                ViewData["Title"] = $"Thêm Điểm Nhìn Panorama cho {model.Location.Name}";
+                return View(model);
             }
 
-            if (ModelState.IsValid)
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+            var fileExtension = Path.GetExtension(model.UploadedImageFile.FileName).ToLowerInvariant();
+
+            if (!allowedExtensions.Contains(fileExtension))
             {
-                try
+                ModelState.AddModelError("UploadedImageFile", "Chỉ cho phép file ảnh JPG hoặc PNG.");
+                ViewData["Title"] = $"Thêm Điểm Nhìn Panorama cho {model.Location.Name}";
+                return View(model);
+            }
+
+            if (model.UploadedImageFile.Length > 50 * 1024 * 1024) // 50 MB
+            {
+                ModelState.AddModelError("UploadedImageFile", "Kích thước ảnh không được vượt quá 50MB.");
+                ViewData["Title"] = $"Thêm Điểm Nhìn Panorama cho {model.Location.Name}";
+                return View(model);
+            }
+
+            string imageUrlForDb = string.Empty;
+            try
+            {
+                string uploadsRootFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "panoramas");
+                string locationSpecificFolder = Path.Combine(uploadsRootFolder, model.LocationId.ToString());
+
+                string uniqueFolderName = Guid.NewGuid().ToString();
+                string panoramaPointFolderPath = Path.Combine(locationSpecificFolder, uniqueFolderName);
+
+                Directory.CreateDirectory(panoramaPointFolderPath);
+
+                // Lưu file gốc với tên ban đầu vào thư mục riêng của panorama point
+                string originalFileName = Path.GetFileName(model.UploadedImageFile.FileName);
+                string filePath = Path.Combine(panoramaPointFolderPath, originalFileName);
+
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
                 {
-                    _context.Add(model.NewPanoramaView);
-                    await _context.SaveChangesAsync();
-
-                    TempData["SuccessMessage"] = "Ảnh panorama đã được thêm thành công!";
-                    return RedirectToAction(nameof(ManagePanoramaForLocation), new { locationId = model.NewPanoramaView.LocationId });
+                    await model.UploadedImageFile.CopyToAsync(fileStream);
                 }
-                catch (Exception ex)
+
+                // --- ĐIỂM QUAN TRỌNG ĐÃ ĐƯỢC SỬA ĐỔI ---
+                // Gán đường dẫn lưu vào DB. Đây sẽ là đường dẫn đến file ảnh gốc.
+                // Ví dụ: /images/panoramas/{LocationId}/{uniqueGuid}/ten_file_goc.jpg
+                imageUrlForDb = Path.Combine("/images", "panoramas", model.LocationId.ToString(), uniqueFolderName, originalFileName).Replace("\\", "/");
+
+                var panoramaPoint = new PanoramaPoint
                 {
-                    _logger.LogError(ex, "Lỗi khi thêm ảnh panorama mới."); // Dòng này giờ sẽ hoạt động
-                    TempData["ErrorMessage"] = "Đã xảy ra lỗi khi thêm ảnh panorama: " + ex.Message;
-                }
-            }
-            else
-            {
-                TempData["ErrorMessage"] = "Vui lòng kiểm tra lại thông tin bạn đã nhập.";
-            }
+                    LocationId = model.LocationId,
+                    Name = model.Name,
+                    Description = model.Description,
+                    ImageUrl = imageUrlForDb // Gán đường dẫn đã tạo vào Model PanoramaPoint
+                };
 
-            // Nếu có lỗi (ModelState không hợp lệ hoặc Exception), tải lại dữ liệu để hiển thị lại View
-            var location = await _context.Locations
-                                        .Include(l => l.PanoramaViews)
-                                        .FirstOrDefaultAsync(l => l.Id == model.NewPanoramaView.LocationId);
-            if (location != null)
-            {
-                model.Location = location;
-                model.PanoramaViews = location.PanoramaViews.OrderBy(pv => pv.Name).ToList();
+                _context.Add(panoramaPoint);
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = "Điểm nhìn panorama đã được thêm thành công!";
+                // Bỏ thông báo về Marzipano CLI vì không còn cần nữa
+                return RedirectToAction(nameof(ListPanoramaPoints), new { locationId = model.LocationId });
             }
-            else
+            catch (Exception ex)
             {
-                // Xử lý trường hợp không tìm thấy location (rất hiếm nếu LocationId đúng)
-                return RedirectToAction(nameof(ManagePanoramaViews));
+                Console.WriteLine($"Lỗi khi thêm điểm nhìn panorama: {ex.Message}");
+                ModelState.AddModelError("", "Đã xảy ra lỗi khi thêm điểm nhìn panorama: " + ex.Message);
+                ViewData["Title"] = $"Thêm Điểm Nhìn Panorama cho {model.Location.Name}";
+                return View(model);
             }
-            return View(nameof(ManagePanoramaForLocation), model);
         }
 
     }
