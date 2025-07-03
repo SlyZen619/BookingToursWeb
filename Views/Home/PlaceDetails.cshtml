@@ -86,7 +86,7 @@
                 {
                     <button class="btn btn-danger btn-md" disabled>Không hoạt động</button>
                 }
-                <a href="#" class="btn btn-info btn-md ml-2">Xem toàn cảnh</a>
+                <a asp-controller="Home" asp-action="PanoramaPointsForLocation" asp-route-locationId="@Model.Id" class="btn btn-info btn-md ml-2">Xem toàn cảnh</a>
                 <a asp-controller="Home" asp-action="Index" class="btn btn-secondary btn-md ml-2">Quay lại trang chủ</a>
             </div>
         </div>

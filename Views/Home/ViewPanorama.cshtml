@@ -1,0 +1,65 @@
+﻿@model BookingToursWeb.Models.PanoramaPoint
+
+@{
+    ViewData["Title"] = $"Xem Panorama: {Model.Name} - @Model.Location?.Name";
+    Layout = "~/Views/Shared/_Layout.cshtml"; // Sử dụng layout chung của người dùng cuối
+    var locationId = Model.LocationId; // Lấy LocationId từ Model
+}
+
+<style>
+    /* CSS tối thiểu để Pannellum chiếm toàn bộ không gian và nút quay lại hiển thị đúng */
+    html, body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden; /* Ngăn cuộn trang */
+    }
+
+    #panorama {
+        width: 100vw; /* Chiều rộng toàn bộ viewport */
+        height: 100vh; /* Chiều cao toàn bộ viewport */
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1; /* Đảm bảo viewer hiển thị trên mọi thứ */
+    }
+
+    /* Style cho nút Back nằm trên panorama */
+    .back-button-overlay {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 10; /* Đảm bảo nút nằm trên Pannellum viewer */
+    }
+</style>
+
+<div id="panorama"></div>
+
+<div class="back-button-overlay">
+    <a asp-controller="Home" asp-action="PanoramaPointsForLocation" asp-route-locationId="@locationId" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Quay lại
+    </a>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css" />
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+
+    <script>
+        // Khởi tạo Pannellum viewer
+        (function() {
+            var panoramaPath = "@Html.Raw(Model.ImageUrl)"; // Đây là đường dẫn tới file ảnh gốc của bạn
+
+            pannellum.viewer('panorama', {
+                "type": "equirectangular", // Loại panorama: equirectangular (ảnh 360 độ phẳng)
+                "panorama": panoramaPath, // Đường dẫn đến file ảnh gốc
+                "autoLoad": true, // Tự động tải khi trang được load
+                "haov": 360, // Horizontal angle of view (FOV ngang), 360 độ cho toàn cảnh
+                "vaov": 180, // Vertical angle of view (FOV dọc), 180 độ cho toàn cảnh
+                "vOffset": 0, // Độ lệch dọc (nếu ảnh bị nghiêng)
+                "autoRotate": -2, // Tự động xoay chậm sang trái (-2 độ/giây)
+                "compass": true // Hiển thị la bàn (nếu có CSS mặc định của Pannellum)
+                // Bạn có thể thêm nhiều tùy chọn khác ở đây: https://pannellum.org/documentation/reference/#viewer-options
+            });
+        })();
+    </script>
+}

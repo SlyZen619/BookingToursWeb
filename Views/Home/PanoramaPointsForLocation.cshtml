@@ -1,0 +1,65 @@
+﻿@model IEnumerable<BookingToursWeb.Models.PanoramaPoint>
+
+@{
+    ViewData["Title"] = $"Vị trí xem toàn cảnh: {ViewData["LocationName"]}";
+    Layout = "~/Views/Shared/_Layout.cshtml"; // Sử dụng layout chung của người dùng cuối
+    var locationId = ViewData["LocationId"] as int? ?? 0;
+    var locationName = ViewData["LocationName"] as string ?? "Địa điểm không xác định";
+}
+
+<div class="container py-5">
+    <h1 class="text-center mb-4">Vị trí xem toàn cảnh tại: @locationName</h1>
+
+    <p class="text-center">
+        Chọn một vị trí để bắt đầu trải nghiệm toàn cảnh 360 độ.
+    </p>
+
+    @* HIỂN THỊ THÔNG BÁO LỖI HOẶC THÀNH CÔNG TỪ TEMPATA *@
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @* KẾT THÚC PHẦN THÔNG BÁO *@
+
+    <div class="row">
+        @if (Model != null && Model.Any())
+        {
+            @foreach (var item in Model)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">@item.Name</h5>
+                            <p class="card-text">@item.Description</p>
+                            @* Nút này sẽ đưa người dùng đến trang hiển thị panorama thực tế.
+                               Chúng ta sẽ tạo Action ViewPanorama sau. *@
+                            <a asp-controller="Home" asp-action="ViewPanorama" asp-route-id="@item.Id" class="btn btn-primary mt-2">Xem Panorama</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12 text-center">
+                <div class="alert alert-info" role="alert">
+                    Hiện chưa có điểm nhìn panorama nào được thêm cho địa điểm này.
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="text-center mt-4">
+        <a asp-controller="Home" asp-action="PlaceDetails" asp-route-id="@locationId" class="btn btn-secondary btn-md">Quay lại trang chi tiết địa điểm</a>
+    </div>
+</div>
