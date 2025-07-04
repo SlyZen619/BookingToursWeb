@@ -5,6 +5,10 @@
     Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
     var currentLocationId = ViewData["CurrentLocationId"] as int? ?? 0;
     var locationName = ViewData["LocationName"] as string ?? "Địa điểm không xác định";
+
+    // Lấy URL hiện tại của trang Admin ListPanoramaPoints để làm returnUrl
+    // Context.Request.PathAndQuery sẽ bao gồm cả query string
+    var currentAdminListUrl = Context.Request.Path + Context.Request.QueryString;
 }
 
 <h1>Danh sách Panorama cho: @locationName</h1>
@@ -59,13 +63,13 @@
                         @Html.DisplayFor(modelItem => item.Description)
                     </td>
                     <td>
-                        <a href="@item.ImageUrl" target="_blank" title="Đường dẫn tới thư mục chứa Marzipano tiles">@item.ImageUrl</a>
-                        <small class="d-block text-muted">(Cần chạy Marzipano CLI để tạo tiles vào thư mục con "tiles")</small>
+                        <a href="@item.ImageUrl" target="_blank" title="Đường dẫn tới thư mục chứa ảnh panorama">@item.ImageUrl</a>
                     </td>
                     <td>
                         <a asp-action="EditPanoramaPoint" asp-route-id="@item.Id" class="btn btn-warning btn-sm">Sửa</a>
                         <a asp-action="DeletePanoramaPoint" asp-route-id="@item.Id" class="btn btn-danger btn-sm">Xóa</a>
-                        <a asp-action="ViewPanorama" asp-controller="Home" asp-route-id="@item.Id" class="btn btn-info btn-sm">Xem Panorama</a>
+                        @* THAY ĐỔI DÒNG NÀY: TRUYỀN returnUrl ĐẾN HOME CONTROLLER *@
+                        <a asp-action="ViewPanorama" asp-controller="Home" asp-route-id="@item.Id" asp-route-returnUrl="@currentAdminListUrl" class="btn btn-info btn-sm">Xem Panorama</a>
                     </td>
                 </tr>
             }

@@ -5,6 +5,9 @@
     Layout = "~/Views/Shared/_Layout.cshtml"; // Sử dụng layout chung của người dùng cuối
     var locationId = ViewData["LocationId"] as int? ?? 0;
     var locationName = ViewData["LocationName"] as string ?? "Địa điểm không xác định";
+
+    // Lấy URL hiện tại của trang người dùng này để làm returnUrl
+    var currentUserListUrl = Context.Request.Path + Context.Request.QueryString;
 }
 
 <div class="container py-5">
@@ -41,9 +44,9 @@
                         <div class="card-body text-center">
                             <h5 class="card-title">@item.Name</h5>
                             <p class="card-text">@item.Description</p>
-                            @* Nút này sẽ đưa người dùng đến trang hiển thị panorama thực tế.
-                               Chúng ta sẽ tạo Action ViewPanorama sau. *@
-                            <a asp-controller="Home" asp-action="ViewPanorama" asp-route-id="@item.Id" class="btn btn-primary mt-2">Xem Panorama</a>
+                            @* Nút này sẽ đưa người dùng đến trang hiển thị panorama thực tế. *@
+                            @* THAY ĐỔI DÒNG NÀY ĐỂ TRUYỀN returnUrl *@
+                            <a asp-controller="Home" asp-action="ViewPanorama" asp-route-id="@item.Id" asp-route-returnUrl="@currentUserListUrl" class="btn btn-primary mt-2">Xem Panorama</a>
                         </div>
                     </div>
                 </div>
