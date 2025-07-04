@@ -25,7 +25,7 @@ namespace BookingToursWeb.Models
 
         [Required(ErrorMessage = "Đường dẫn ảnh panorama không được để trống.")]
         [StringLength(500, ErrorMessage = "Đường dẫn ảnh không được vượt quá 500 ký tự.")]
-        [Display(Name = "Đường dẫn ảnh Panorama (Cube Map Tiles)")]
+        [Display(Name = "Đường dẫn ảnh Panorama")]
         public string ImageUrl { get; set; } = string.Empty; // Đường dẫn đến thư mục chứa các tile ảnh (vd: /images/panoramas/locationX/roomY/)
 
         // Navigation Property: Một PanoramaPoint thuộc về một Location
