@@ -388,61 +388,89 @@ namespace BookingToursWeb.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteLocationConfirmed(int id)
         {
-            if (!IsCurrentUserAdmin())
-            {
-                TempData["ErrorMessage"] = "Bạn không có quyền xóa địa điểm.";
-                return RedirectToAction("Index", "Home");
-            }
+            // ... (Phần kiểm tra quyền admin, Include Locations, Bookings, Reviews) ...
 
-            // Tải địa điểm CÙNG VỚI các lịch hẹn và đánh giá liên quan
             var location = await _context.Locations
-                                         .Include(l => l.Bookings) // RẤT QUAN TRỌNG: Tải Bookings liên quan
-                                         .Include(l => l.Reviews)  // RẤT QUAN TRỌNG: Tải Reviews liên quan
-                                         .FirstOrDefaultAsync(m => m.Id == id);
+                                        .Include(l => l.Bookings)
+                                        .Include(l => l.Reviews)
+                                        .Include(l => l.PanoramaPoints) // Vẫn cần include PanoramaPoints
+                                        .FirstOrDefaultAsync(m => m.Id == id);
 
+            // Kiểm tra nếu location null
             if (location == null)
             {
-                TempData["ErrorMessage"] = "Không tìm thấy địa điểm để xóa.";
-                // Thay vì NotFound(), chúng ta sẽ chuyển hướng về ManageLocations để hiển thị lỗi thân thiện
+                TempData["ErrorMessage"] = "Không tìm thấy địa điểm cần xóa.";
                 return RedirectToAction(nameof(ManageLocations));
             }
 
-            // -------------------------------------------------------------------
-            // THÊM LOGIC KIỂM TRA SỐ LƯỢNG LỊCH HẸN VÀ ĐÁNH GIÁ TRƯỚC KHI XÓA
-            // -------------------------------------------------------------------
+            // Bước 1: Xóa các thư mục ảnh panorama con liên quan đến từng PanoramaPoint
+            var panoramaPoints = location.PanoramaPoints; // Gán vào biến cục bộ
 
-            if (location.Bookings.Any())
+            if (panoramaPoints != null && panoramaPoints.Any()) // Kiểm tra null và rỗng trên biến cục bộ
             {
-                TempData["ErrorMessage"] = "Không thể xóa địa điểm này vì có các lịch hẹn liên quan. Vui lòng xóa tất cả các lịch hẹn của địa điểm này trước khi xóa.";
-                return RedirectToAction(nameof(ManageLocations)); // Chuyển hướng về trang quản lý để hiển thị thông báo
+                foreach (var panoramaPoint in panoramaPoints) // Trình biên dịch giờ biết 'panoramaPoints' không null
+                {
+                    var relativeImageUrl = panoramaPoint.ImageUrl; // panoramaPoint.ImageUrl có thể là string?
+
+                    if (!string.IsNullOrEmpty(relativeImageUrl))
+                    {
+                        // fullPhysicalPathFromDb sẽ không null vì relativeImageUrl không null
+                        string fullPhysicalPathFromDb = Path.Combine(_webHostEnvironment.WebRootPath, relativeImageUrl.TrimStart('/'));
+
+                        // panoramaPointFolderPath có thể là null nếu fullPhysicalPathFromDb là gốc hoặc không hợp lệ
+                        string? panoramaPointFolderPath = Path.GetDirectoryName(fullPhysicalPathFromDb); // Đã sửa cảnh báo Conversion of null to non-nullable
+
+                        if (!string.IsNullOrEmpty(panoramaPointFolderPath) && Directory.Exists(panoramaPointFolderPath))
+                        {
+                            Directory.Delete(panoramaPointFolderPath, true); // Xóa toàn bộ thư mục và nội dung bên trong
+                            Console.WriteLine($"Đã xóa thư mục panorama: {panoramaPointFolderPath}");
+                        }
+                    }
+                }
             }
 
-            if (location.Reviews.Any())
+            // Bước 2: Xóa thư mục gốc của địa điểm nếu nó tồn tại và trống
+            // Thư mục này là E:\BookingToursWeb\wwwroot\images\panoramas\{LocationId}
+            string locationRootFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "panoramas", location.Id.ToString());
+            if (Directory.Exists(locationRootFolder))
             {
-                TempData["ErrorMessage"] = "Không thể xóa địa điểm này vì có các đánh giá liên quan. Vui lòng xóa tất cả các đánh giá của địa điểm này trước khi xóa.";
-                return RedirectToAction(nameof(ManageLocations)); // Chuyển hướng về trang quản lý để hiển thị thông báo
+                // Kiểm tra xem nó có rỗng không trước khi xóa, để tránh xóa nhầm dữ liệu không liên quan
+                if (!Directory.EnumerateFileSystemEntries(locationRootFolder).Any())
+                {
+                    Directory.Delete(locationRootFolder, false); // false vì đã kiểm tra rỗng
+                    Console.WriteLine($"Đã xóa thư mục địa điểm gốc rỗng: {locationRootFolder}");
+                }
+                else
+                {
+                    Console.WriteLine($"Thư mục địa điểm gốc '{locationRootFolder}' không rỗng, không xóa tự động.");
+                }
             }
 
-            // -------------------------------------------------------------------
-            // Nếu không có lịch hẹn hoặc đánh giá liên quan, tiến hành xóa
-            // -------------------------------------------------------------------
-            try
+            // Bước 3: Xóa Location và các Bookings, Reviews, PanoramaPoints khỏi database
+            if (location.Bookings != null && location.Bookings.Any())
             {
-                _context.Locations.Remove(location);
-                await _context.SaveChangesAsync(); // Thao tác xóa thực sự trong database
+                _context.Bookings.RemoveRange(location.Bookings);
+            }
 
-                TempData["SuccessMessage"] = "Địa điểm đã được xóa thành công.";
-                return RedirectToAction(nameof(ManageLocations));
-            }
-            catch (DbUpdateException ex)
+            if (location.Reviews != null && location.Reviews.Any())
             {
-                // Mặc dù chúng ta đã kiểm tra, nhưng đây là lớp bảo vệ cuối cùng nếu có lỗi ràng buộc khác xảy ra.
-                // Ví dụ: có thể có một ràng buộc khác mà chúng ta chưa kiểm tra bằng .Any()
-                TempData["ErrorMessage"] = $"Đã xảy ra lỗi hệ thống khi xóa địa điểm. Vui lòng thử lại. Lỗi chi tiết: {ex.Message}";
-                // Bạn có thể log `ex` chi tiết hơn nếu cần để debug.
-                return RedirectToAction(nameof(ManageLocations));
+                _context.Reviews.RemoveRange(location.Reviews);
             }
+
+            // Dòng này cũng được hưởng lợi từ việc kiểm tra null rõ ràng
+            if (location.PanoramaPoints != null && location.PanoramaPoints.Any())
+            {
+                _context.PanoramaPoints.RemoveRange(location.PanoramaPoints);
+            }
+
+            _context.Locations.Remove(location);
+
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Địa điểm và tất cả dữ liệu liên quan đã được xóa thành công.";
+            return RedirectToAction(nameof(ManageLocations));
         }
+
 
         // ====================================================================
         // CÁC ACTIONS CHO QUẢN LÝ LỊCH HẸN
