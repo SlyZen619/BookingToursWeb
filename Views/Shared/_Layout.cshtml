@@ -56,10 +56,13 @@
         main {
             padding-top: 20px;
             padding-bottom: 20px;
+            /* Đảm bảo main có thể mở rộng để đẩy footer xuống */
+            flex-grow: 1; /* Rất quan trọng cho flexbox sticky footer */
         }
 
-        /* Footer Styling */
+        /* Footer Styling (chỉ giữ lại những phần không liên quan đến position) */
         footer {
+            /* Các thuộc tính position, bottom, left, z-index sẽ bị loại bỏ */
             background-color: #f8f9fa; /* Màu nền nhẹ cho footer */
             padding: 15px 0;
             font-size: 0.9em;
@@ -92,78 +95,95 @@
             .btn-admin-nav-dropdown:hover {
                 background-color: #e6f2ff; /* Nền xanh nhạt khi hover */
             }
+
+        /* CSS MỚI ĐỂ TẠO STICKY FOOTER */
+        html, body {
+            height: 100%; /* Đảm bảo html và body chiếm toàn bộ chiều cao viewport */
+        }
+
+        #root-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh; /* Đảm bảo container này chiếm ít nhất toàn bộ chiều cao viewport */
+        }
+
     </style>
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-custom border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">BookingToursWeb</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Booking">Đặt lịch</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Posts">Bài viết</a>
-                        </li>
-                    </ul>
-                    <ul class="navbar-nav">
-                        @* Kiểm tra xem người dùng đã đăng nhập chưa bằng Session *@
-                        @if (Context.Session.GetInt32("UserId") != null)
-                        {
-                            <li class="nav-item dropdown">
-                                @* Thêm class "dropdown" *@
-                                <a class="nav-link dropdown-toggle text-light" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Xin chào, @Context.Session.GetString("Username")! @* Hiển thị tên người dùng đã đăng nhập *@
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <li>
-                                        @* NÚT PROFILE CỦA TÔI (Sẽ chứa lịch đã đặt bên trong) *@
-                                        <a class="dropdown-item" asp-controller="Home" asp-action="Profile">Profile của tôi</a>
-                                    </li>
-                                    <li><hr class="dropdown-divider"></li> @* Đường phân cách *@
-                                    @* Thêm dropdown-menu-end để menu xổ ra bên phải *@
-                                    @* Nút Admin Panel - chỉ hiển thị nếu là Admin *@
-                                    @if (Context.Session.GetString("IsAdmin") == "True")
-                                    {
+    <div id="root-container">
+        @* THÊM CONTAINER MỚI Ở ĐÂY *@
+        <header>
+            <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-custom border-bottom box-shadow mb-3">
+                <div class="container-fluid">
+                    <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">BookingToursWeb</a>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                            aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                        <ul class="navbar-nav flex-grow-1">
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Booking">Đặt lịch</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Posts">Bài viết</a>
+                            </li>
+                        </ul>
+                        <ul class="navbar-nav">
+                            @* Kiểm tra xem người dùng đã đăng nhập chưa bằng Session *@
+                            @if (Context.Session.GetInt32("UserId") != null)
+                            {
+                                <li class="nav-item dropdown">
+                                    @* Thêm class "dropdown" *@
+                                    <a class="nav-link dropdown-toggle text-light" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Xin chào, @Context.Session.GetString("Username")! @* Hiển thị tên người dùng đã đăng nhập *@
+                                    </a>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                         <li>
-                                            <a class="dropdown-item btn-admin-nav-dropdown" asp-area="" asp-controller="Admin" asp-action="Index">Admin Panel</a>
+                                            @* NÚT PROFILE CỦA TÔI (Sẽ chứa lịch đã đặt bên trong) *@
+                                            <a class="dropdown-item" asp-controller="Home" asp-action="Profile">Profile của tôi</a>
                                         </li>
-                                    }
-                                    <li><hr class="dropdown-divider"></li> @* Đường phân cách *@
-                                    <li>
-                                        <a class="dropdown-item" asp-controller="Account" asp-action="Logout">Đăng xuất</a>
-                                    </li>
-                                </ul>
-                            </li>
-                        }
-                        else
-                        {
-                            @* CÁC LIÊN KẾT ĐĂNG NHẬP / ĐĂNG KÝ NẾU CHƯA ĐĂNG NHẬP *@
-                            <li class="nav-item">
-                                <a class="nav-link text-light" asp-controller="Account" asp-action="Login">Đăng nhập</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-light" asp-controller="Account" asp-action="Register">Đăng ký</a>
-                            </li>
-                        }
-                    </ul>
+                                        <li><hr class="dropdown-divider"></li> @* Đường phân cách *@
+                                        @* Thêm dropdown-menu-end để menu xổ ra bên phải *@
+                                        @* Nút Admin Panel - chỉ hiển thị nếu là Admin *@
+                                        @if (Context.Session.GetString("IsAdmin") == "True")
+                                        {
+                                            <li>
+                                                <a class="dropdown-item btn-admin-nav-dropdown" asp-area="" asp-controller="Admin" asp-action="Index">Admin Panel</a>
+                                            </li>
+                                        }
+                                        <li><hr class="dropdown-divider"></li> @* Đường phân cách *@
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Account" asp-action="Logout">Đăng xuất</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            }
+                            else
+                            {
+                                @* CÁC LIÊN KẾT ĐĂNG NHẬP / ĐĂNG KÝ NẾU CHƯA ĐĂNG NHẬP *@
+                                <li class="nav-item">
+                                    <a class="nav-link text-light" asp-controller="Account" asp-action="Login">Đăng nhập</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-light" asp-controller="Account" asp-action="Register">Đăng ký</a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
                 </div>
-            </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
+            </nav>
+        </header>
+        <div class="container">
+            @* Cần giữ div.container này để căn giữa nội dung *@
+            <main role="main" class="pb-3">
+                @RenderBody()
+            </main>
+        </div>
 
-    <partial name="_FooterPartial" />
+        @* Không cần partial name ở đây vì footer sẽ được render trực tiếp bên ngoài main.container để dễ kiểm soát với sticky footer *@
+        <partial name="_FooterPartial" />
+    </div> @* ĐÓNG CONTAINER MỚI Ở ĐÂY *@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
