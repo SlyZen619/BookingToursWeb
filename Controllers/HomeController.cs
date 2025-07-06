@@ -309,30 +309,46 @@ namespace BookingToursWeb.Controllers
             }
         }
 
-        // Trang chi tiết địa điểm
         public async Task<IActionResult> PlaceDetails(int? id)
         {
             if (id == null)
             {
                 _logger.LogWarning("PlaceDetails: ID địa điểm không được cung cấp.");
-                return NotFound();
+                TempData["ErrorMessage"] = "Địa điểm không tồn tại hoặc không tìm thấy.";
+                return RedirectToAction("Index"); // Chuyển hướng về trang chủ
             }
 
             try
             {
-                var location = await _context.Locations.FindAsync(id);
+                // Bao gồm Reviews và Users để hiển thị thông tin đánh giá
+                var location = await _context.Locations
+                                             .Include(l => l.Reviews)
+                                                .ThenInclude(r => r.User) // Bao gồm User cho mỗi đánh giá
+                                             .FirstOrDefaultAsync(l => l.Id == id);
 
                 if (location == null)
                 {
                     _logger.LogWarning($"PlaceDetails: Không tìm thấy địa điểm với ID: {id}.");
-                    return NotFound();
+                    TempData["ErrorMessage"] = "Địa điểm không tồn tại hoặc không tìm thấy.";
+                    return RedirectToAction("Index"); // Chuyển hướng về trang chủ
                 }
 
                 ViewData["Title"] = location.Name;
-
-                // THÊM LOGIC KIỂM TRA ISACTIVE TẠI ĐÂY
-                // Truyền trạng thái hoạt động vào ViewData hoặc ViewBag để View có thể xử lý nút "Đặt lịch"
                 ViewBag.LocationIsActive = location.IsActive;
+
+                // Lấy User ID từ Session và ép kiểu tường minh để tránh lỗi dynamic operation
+                int? currentUserId = HttpContext.Session.GetInt32("UserId");
+                ViewBag.CurrentUserId = currentUserId; // Gán vào ViewBag để dùng trong View
+
+                // Kiểm tra xem người dùng hiện tại đã đánh giá địa điểm này chưa
+                bool hasUserReviewed = false;
+                if (currentUserId.HasValue) // Chỉ kiểm tra nếu userId có giá trị
+                {
+                    var existingReview = await _context.Reviews
+                        .FirstOrDefaultAsync(r => r.LocationId == id && r.UserId == currentUserId.Value);
+                    hasUserReviewed = (existingReview != null);
+                }
+                ViewBag.HasUserReviewed = hasUserReviewed;
 
                 return View(location);
             }
@@ -342,6 +358,64 @@ namespace BookingToursWeb.Controllers
                 TempData["ErrorMessage"] = "Có lỗi xảy ra khi tải thông tin địa điểm. Vui lòng thử lại sau.";
                 return View("Error");
             }
+        }
+
+        // POST: Home/AddReview (Đã đổi tên từ SubmitReview)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddReview(Review review) // Đổi tên action và tham số
+        {
+            var userId = HttpContext.Session.GetInt32("UserId");
+            if (userId == null)
+            {
+                TempData["ErrorMessage"] = "Bạn cần đăng nhập để gửi đánh giá.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            // Gán UserId từ session và thời gian tạo/cập nhật
+            review.UserId = userId.Value;
+            review.CreatedAt = DateTime.UtcNow;
+            review.UpdatedAt = DateTime.UtcNow;
+
+            // Kiểm tra xem người dùng đã đánh giá địa điểm này chưa
+            var existingReview = await _context.Reviews
+                .FirstOrDefaultAsync(r => r.LocationId == review.LocationId && r.UserId == userId.Value);
+
+            if (existingReview != null)
+            {
+                TempData["ErrorMessage"] = "Bạn đã gửi đánh giá cho địa điểm này rồi. Bạn có thể chỉnh sửa đánh giá hiện có.";
+                return RedirectToAction("PlaceDetails", new { id = review.LocationId });
+            }
+
+            // KHÔNG còn gán review.Status vì Review model không có thuộc tính Status
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Add(review);
+                    await _context.SaveChangesAsync();
+
+                    // KHÔNG CẬP NHẬT AverageRating và TotalReviews của Location
+                    // Vì các thuộc tính này đã bị loại bỏ khỏi model Location theo yêu cầu.
+
+                    TempData["SuccessMessage"] = "Đánh giá của bạn đã được gửi thành công!";
+                    return RedirectToAction("PlaceDetails", new { id = review.LocationId });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Lỗi khi gửi đánh giá cho địa điểm ID: {review.LocationId}, UserId: {review.UserId}");
+                    TempData["ErrorMessage"] = "Có lỗi xảy ra khi gửi đánh giá của bạn. Vui lòng thử lại.";
+                }
+            }
+            else
+            {
+                // Thu thập và hiển thị lỗi ModelState nếu có
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
+                TempData["ErrorMessage"] = "Đã có lỗi xảy ra trong dữ liệu đánh giá: " + string.Join("; ", errors);
+            }
+
+            return RedirectToAction("PlaceDetails", new { id = review.LocationId });
         }
 
         // --- Bổ sung Action PanoramaPointsForLocation ---

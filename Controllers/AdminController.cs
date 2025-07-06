@@ -810,17 +810,7 @@ namespace BookingToursWeb.Controllers
 
         // Các action quản lý Review và Post
         // Bạn đã có các placeholder cho chúng, tôi sẽ giữ nguyên
-        // GET: Admin/ManageReviews
-        public IActionResult ManageReviews()
-        {
-            if (!IsCurrentUserAdmin())
-            {
-                TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang này.";
-                return RedirectToAction("Index", "Home");
-            }
-            ViewData["Title"] = "Quản lý Đánh giá";
-            return View();
-        }
+        
 
         // GET: Admin/ManagePosts
         public IActionResult ManagePosts()
@@ -977,5 +967,78 @@ namespace BookingToursWeb.Controllers
             }
         }
 
+        // GET: /Admin/ManageReviews
+        // Action này sẽ hiển thị danh sách các địa điểm để người dùng chọn xem đánh giá của địa điểm nào
+        public async Task<IActionResult> ManageReviews()
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang này.";
+                return RedirectToAction("Index", "Home"); // Chuyển hướng về trang chủ nếu không có quyền
+            }
+
+            ViewData["Title"] = "Quản lý Đánh giá theo Địa điểm"; // Tiêu đề của trang quản lý đánh giá tổng quát
+            var locations = await _context.Locations.ToListAsync(); // Lấy tất cả địa điểm từ database
+
+            // Truyền danh sách địa điểm sang View
+            return View(locations);
+        }
+
+        // GET: /Admin/ListReviewsForLocation/{locationId}
+        // Action này sẽ hiển thị danh sách đánh giá cho một địa điểm cụ thể
+        public async Task<IActionResult> ListReviewsForLocation(int locationId)
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang này.";
+                return RedirectToAction("Index", "Home"); // Chuyển hướng về trang chủ nếu không có quyền
+            }
+
+            // Tìm địa điểm và include các đánh giá cùng với thông tin người dùng đánh giá
+            var location = await _context.Locations
+                                         .Include(l => l.Reviews) // Tải các đánh giá liên quan
+                                             .ThenInclude(r => r.User) // Tải thông tin User cho mỗi đánh giá
+                                         .FirstOrDefaultAsync(l => l.Id == locationId);
+
+            if (location == null)
+            {
+                TempData["ErrorMessage"] = "Địa điểm không tồn tại hoặc không tìm thấy.";
+                return RedirectToAction("ManageReviews"); // Quay lại trang quản lý đánh giá tổng quát nếu không tìm thấy địa điểm
+            }
+
+            ViewBag.LocationName = location.Name; // Dùng để hiển thị tên địa điểm trên View
+            ViewData["Title"] = $"Đánh giá cho: {location.Name}"; // Đặt tiêu đề cho View
+
+            // Truyền danh sách đánh giá của địa điểm đó sang View
+            return View(location.Reviews.ToList());
+        }
+
+        // POST: /Admin/DeleteReview/{id}
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteReview(int id)
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền thực hiện hành động này.";
+                return RedirectToAction("Index", "Home"); // Chuyển hướng về trang chủ nếu không có quyền
+            }
+
+            var review = await _context.Reviews.FindAsync(id);
+
+            if (review == null)
+            {
+                TempData["ErrorMessage"] = "Không tìm thấy đánh giá để xóa.";
+                return RedirectToAction("ManageReviews", "Admin");
+            }
+
+            var locationId = review.LocationId; // Lấy LocationId để chuyển hướng đúng
+
+            _context.Reviews.Remove(review);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Đánh giá đã được xóa thành công.";
+            return RedirectToAction("ListReviewsForLocation", "Admin", new { locationId = locationId });
+        }
     }
 }
