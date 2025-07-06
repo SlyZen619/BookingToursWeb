@@ -1,8 +1,10 @@
-﻿@model BookingToursWeb.Models.Location // Model của View này sẽ là đối tượng Location
+﻿@model BookingToursWeb.Models.Location
 
 @{
-    ViewData["Title"] = Model.Name; // Sử dụng tên địa điểm làm tiêu đề trang
-    Layout = "~/Views/Shared/_Layout.cshtml"; // Sử dụng layout chung của bạn
+    ViewData["Title"] = Model.Name;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currentUserId = ViewBag.CurrentUserId as int?;
+    var hasUserReviewed = ViewBag.HasUserReviewed as bool? ?? false;
 }
 
 <div class="container py-5">
@@ -13,16 +15,14 @@
     @* HIỂN THỊ THÔNG BÁO LỖI HOẶC THÀNH CÔNG TỪ TEMPATA *@
     @if (TempData["SuccessMessage"] != null)
     {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <div id="successAlert" class="alert alert-success alert-dismissible fade show" role="alert">
             @TempData["SuccessMessage"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     }
     @if (TempData["ErrorMessage"] != null)
     {
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <div id="errorAlert" class="alert alert-danger alert-dismissible fade show" role="alert">
             @TempData["ErrorMessage"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     }
     @* KẾT THÚC PHẦN THÔNG BÁO *@
@@ -41,9 +41,8 @@
             <h3 class="mt-4">Thông tin chi tiết</h3>
             @if (!string.IsNullOrEmpty(Model.Information))
             {
-                // Hiển thị nội dung từ cột Information
                 <div class="card card-body shadow-sm mb-4">
-                    @Html.Raw(Model.Information) @* Sử dụng @Html.Raw để hiển thị HTML nếu Information có chứa HTML *@
+                    @Html.Raw(Model.Information)
                 </div>
             }
             else
@@ -77,8 +76,7 @@
             </div>
 
             <div class="text-center mt-4">
-                @* Logic kiểm tra IsActive của địa điểm để hiển thị nút đặt lịch hoặc thông báo không hoạt động *@
-                @if (Model.IsActive) // Dựa vào thuộc tính IsActive của Model trực tiếp
+                @if (ViewBag.LocationIsActive)
                 {
                     <a asp-controller="Home" asp-action="Booking" asp-route-locationId="@Model.Id" class="btn btn-primary btn-md">Đặt lịch tham quan</a>
                 }
@@ -89,10 +87,157 @@
                 <a asp-controller="Home" asp-action="PanoramaPointsForLocation" asp-route-locationId="@Model.Id" class="btn btn-info btn-md ml-2">Xem toàn cảnh</a>
                 <a asp-controller="Home" asp-action="Index" class="btn btn-secondary btn-md ml-2">Quay lại trang chủ</a>
             </div>
+
+            <h3 class="mt-5">Đánh giá của khách hàng</h3>
+            @if (Model.Reviews != null && Model.Reviews.Any())
+            {
+                <div class="list-group mb-4">
+                    @foreach (var review in Model.Reviews.OrderByDescending(r => r.CreatedAt))
+                    {
+                        <div class="list-group-item list-group-item-action flex-column align-items-start">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">@review.User?.Username</h5>
+                                <small>@review.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small> 
+                            </div>
+                            <p class="mb-1">
+                                @for (int i = 0; i < review.Rating; i++)
+                                {
+                                    <i class="fas fa-star text-warning"></i>
+                                }
+                                @for (int i = review.Rating; i < 5; i++)
+                                {
+                                    <i class="far fa-star text-warning"></i>
+                                }
+                            </p>
+                            <p class="mb-1">@review.Comment</p>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p>Chưa có đánh giá nào cho địa điểm này. Hãy là người đầu tiên đánh giá!</p>
+            }
+
+            @if (currentUserId != null && !hasUserReviewed)
+            {
+                <h4 class="mt-4">Gửi đánh giá của bạn</h4>
+                <div class="card shadow-sm p-4 mb-5">
+                    <form asp-action="AddReview" method="post">
+                        <input type="hidden" name="LocationId" value="@Model.Id" />
+                        <div class="mb-3">
+                            <label for="Rating" class="form-label">Đánh giá sao:</label>
+                            <select class="form-select" id="Rating" name="Rating" required>
+                                <option value="">-- Chọn số sao --</option>
+                                <option value="1">1 Sao</option>
+                                <option value="2">2 Sao</option>
+                                <option value="3">3 Sao</option>
+                                <option value="4">4 Sao</option>
+                                <option value="5">5 Sao</option>
+                            </select>
+                            <span class="text-danger" id="ratingValidationMessage"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label for="Comment" class="form-label">Bình luận (tùy chọn):</label>
+                            <textarea class="form-control" id="Comment" name="Comment" rows="4" maxlength="2000"></textarea>
+                            <span class="text-danger" id="commentValidationMessage"></span>
+                        </div>
+                        <button type="submit" class="btn btn-success">Gửi đánh giá</button>
+                    </form>
+                </div>
+            }
+            else if (currentUserId != null && hasUserReviewed)
+            {
+                <div class="alert alert-info mt-4" role="alert">
+                    Bạn đã gửi đánh giá cho địa điểm này rồi.
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info mt-4" role="alert">
+                    Vui lòng <a asp-controller="Account" asp-action="Login">đăng nhập</a> để gửi đánh giá.
+                </div>
+            }
         </div>
     </div>
 </div>
 
 @section Scripts {
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // JavaScript cho việc tự động biến mất thông báo
+            const successAlert = document.getElementById('successAlert');
+            const errorAlert = document.getElementById('errorAlert');
+
+            // Hàm để ẩn alert sau một thời gian
+            function hideAlert(alertElement, delay = 5000) { // Mặc định 5 giây (5000ms)
+                if (alertElement) {
+                    setTimeout(() => {
+                        // Kiểm tra xem phần tử vẫn còn trong DOM và có lớp 'show' không
+                        // 'show' có thể đã bị xóa bởi người dùng nhấn nút đóng (nếu có)
+                        if (alertElement && alertElement.classList.contains('show')) {
+                            // Lấy instance hoặc tạo mới nếu chưa có.
+                            const bsAlert = bootstrap.Alert.getInstance(alertElement) || new bootstrap.Alert(alertElement);
+
+                            // Gọi close(). Phương thức này sẽ tự động kích hoạt hiệu ứng fade-out
+                            // và sau đó loại bỏ phần tử khỏi DOM, giải phóng không gian.
+                            bsAlert.close();
+                        } else if (alertElement) {
+                            // Fallback: nếu alert không còn lớp 'show' (có thể đã bị đóng),
+                            // đảm bảo nó bị ẩn đi để không chiếm không gian.
+                            alertElement.style.display = 'none';
+                        }
+                    }, delay);
+                }
+            }
+
+            // Gọi hàm cho alert thành công
+            // Nếu bạn muốn nó tự biến mất sau 5s VÀ vẫn có nút X để đóng thủ công,
+            // thì giữ nguyên cả phần HTML alert-dismissible và JavaScript này.
+            if (successAlert) {
+                hideAlert(successAlert, 5000); // Ẩn sau 5 giây
+            }
+
+            // Gọi hàm cho alert lỗi
+            if (errorAlert) {
+                hideAlert(errorAlert, 7000); // Ẩn sau 7 giây
+            }
+
+
+            // JavaScript cho form đánh giá (giữ nguyên hoặc có thể đã được thay đổi)
+            const reviewForm = document.querySelector('form[asp-action="AddReview"]');
+            const ratingSelect = document.getElementById('Rating');
+            const ratingValidationMessage = document.getElementById('ratingValidationMessage');
+            const commentValidationMessage = document.getElementById('commentValidationMessage');
+            const commentTextarea = document.getElementById('Comment');
+
+
+            if (reviewForm && ratingSelect) {
+                reviewForm.addEventListener('submit', function (event) {
+                    ratingValidationMessage.textContent = '';
+                    commentValidationMessage.textContent = '';
+
+                    let isValid = true;
+                    const ratingValue = ratingSelect.value;
+                    const commentValue = commentTextarea.value;
+
+                    if (ratingValue === "" || parseInt(ratingValue) === 0) {
+                        ratingValidationMessage.textContent = 'Vui lòng chọn số sao đánh giá.';
+                        isValid = false;
+                    }
+
+                    if (commentValue.length > 2000) {
+                        commentValidationMessage.textContent = 'Bình luận không được vượt quá 2000 ký tự.';
+                        isValid = false;
+                    }
+
+                    if (!isValid) {
+                        event.preventDefault();
+                    }
+                });
+            }
+        });
+    </script>
 }
