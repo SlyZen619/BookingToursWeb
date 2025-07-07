@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using BookingToursWeb.Models;
+using BookingToursWeb.Models; // Đảm bảo namespace này đã được import để sử dụng các Models
 
 namespace BookingToursWeb.Data
 {
@@ -16,8 +16,10 @@ namespace BookingToursWeb.Data
         public DbSet<Booking> Bookings { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Post> Posts { get; set; }
-        public DbSet<BookingToursWeb.Models.PanoramaPoint> PanoramaPoints { get; set; }
-
+        public DbSet<PanoramaPoint> PanoramaPoints { get; set; }
+        // === THÊM DbSet CHO CATEGORY ===
+        public DbSet<Category> Categories { get; set; }
+        // === HẾT THÊM ===
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -35,7 +37,6 @@ namespace BookingToursWeb.Data
             // =====================================================================
 
             // Mối quan hệ Booking - User (Many-to-One: Bookings to User)
-            // Một Booking thuộc về một User. Một User có nhiều Bookings.
             modelBuilder.Entity<Booking>()
                 .HasOne(b => b.User)
                 .WithMany(u => u.Bookings)
@@ -50,7 +51,6 @@ namespace BookingToursWeb.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Mối quan hệ Review - User (Many-to-One: Reviews to User)
-            // Một Review thuộc về một User. Một User có nhiều Reviews.
             modelBuilder.Entity<Review>()
                 .HasOne(r => r.User)
                 .WithMany(u => u.Reviews)
@@ -65,13 +65,21 @@ namespace BookingToursWeb.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Mối quan hệ Post - User (Author) (Many-to-One: Posts to User)
-            // Một Post có một Author (là User). Một User có nhiều Posts.
             modelBuilder.Entity<Post>()
                 .HasOne(p => p.Author)
                 .WithMany(u => u.Posts)
                 .HasForeignKey(p => p.AuthorId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // === THÊM CẤU HÌNH MỐI QUAN HỆ POST - CATEGORY ===
+            // Một Post có một Category (Many-to-One: Posts to Category)
+            // Một Category có nhiều Posts.
+            modelBuilder.Entity<Post>()
+                .HasOne(p => p.Category) // Post có một Category
+                .WithMany(c => c.Posts) // Category có nhiều Posts
+                .HasForeignKey(p => p.CategoryId) // CategoryId là khóa ngoại trong Posts
+                .OnDelete(DeleteBehavior.Restrict); // Ngăn không cho xóa Category nếu có Posts liên quan
+            // === HẾT THÊM ===
 
             base.OnModelCreating(modelBuilder);
         }
