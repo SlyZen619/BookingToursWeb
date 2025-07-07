@@ -1,0 +1,51 @@
+﻿@* Views/Home/Posts.cshtml *@
+@model IEnumerable<BookingToursWeb.Models.Post>
+
+@{
+    ViewData["Title"] = ViewData["CurrentCategoryName"] ?? "Bài viết"; // Sử dụng tiêu đề từ ViewData hoặc mặc định
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <h1 class="mb-4">@ViewData["Title"]</h1>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info" role="alert">
+            Hiện tại chưa có bài viết nào trong @ViewData["CurrentCategoryName"].
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            @foreach (var post in Model)
+            {
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        @if (!string.IsNullOrEmpty(post.ImageUrl))
+                        {
+                            <img src="@post.ImageUrl" class="card-img-top" alt="@post.Title" style="height: 200px; object-fit: cover;">
+                        }
+                        else
+                        {
+                            <img src="https://via.placeholder.com/400x200?text=No+Image" class="card-img-top" alt="No Image" style="height: 200px; object-fit: cover;">
+                        }
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">@post.Title</h5>
+                            <p class="card-text text-muted mb-2">
+                                <small>Danh mục: @post.Category?.Name</small><br />
+                                <small>Bởi: @post.Author?.Username - @post.PublishedAt.ToLocalTime().ToString("dd/MM/yyyy")</small>
+                            </p>
+                            <p class="card-text">
+                                @(post.Content.Length > 150 ? post.Content.Substring(0, 150) + "..." : post.Content)
+                            </p>
+                            <div class="mt-auto">
+                                <a asp-controller="Home" asp-action="PostDetails" asp-route-id="@post.Id" class="btn btn-primary btn-sm">Xem chi tiết</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

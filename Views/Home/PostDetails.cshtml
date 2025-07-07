@@ -1,0 +1,44 @@
+﻿@model BookingToursWeb.Models.Post
+
+@{
+    ViewData["Title"] = Model.Title;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-10 offset-lg-1">
+            <article>
+                <h1 class="mb-3">@Model.Title</h1>
+
+                @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                {
+                    <img src="@Model.ImageUrl" class="img-fluid rounded mb-4" alt="@Model.Title" style="max-height: 400px; width: 100%; object-fit: cover;">
+                }
+
+                <div class="post-meta text-muted mb-4">
+                    <span class="me-3">
+                        <i class="fas fa-user"></i> Tác giả: @(Model.Author?.Username ?? "Ẩn danh")
+                    </span>
+                    <span class="me-3">
+                        <i class="fas fa-folder-open"></i> Danh mục: @(Model.Category?.Name ?? "Chưa phân loại")
+                    </span>
+                    <span>
+                        <i class="fas fa-calendar-alt"></i> Ngày xuất bản: @Model.PublishedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                    </span>
+                </div>
+
+                <div class="post-content">
+                    @Html.Raw(Model.Content) @* Sử dụng Html.Raw để render HTML từ nội dung bài viết *@
+                </div>
+
+                <div class="mt-5">
+                    <a asp-action="Posts" class="btn btn-secondary">Quay lại danh sách bài viết</a>
+                </div>
+            </article>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+}
