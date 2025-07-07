@@ -1,0 +1,16 @@
+﻿@* Views/Shared/_CategoryDropdownPartial.cshtml *@
+@* Partial View này sẽ nhận một danh sách Category từ ViewBag *@
+
+@if (ViewBag.Categories != null)
+{
+    @foreach (var category in ViewBag.Categories)
+    {
+        <li>
+            <a class="dropdown-item" asp-controller="Home" asp-action="PostsByCategory" asp-route-categoryId="@category.Id">@category.Name</a>
+        </li>
+    }
+}
+else
+{
+    <li><a class="dropdown-item" href="#">Không có danh mục nào</a></li>
+}

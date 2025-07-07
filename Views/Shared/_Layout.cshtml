@@ -34,6 +34,10 @@
                 background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
             }
 
+            .navbar-custom .nav-link.dropdown-toggle::after {
+                content: none; /* Loại bỏ nội dung mặc định (là mũi tên) */
+            }
+
         /* Tùy chỉnh nút Admin */
         .btn-admin-nav {
             font-size: 0.85rem; /* Kích thước chữ nhỏ hơn */
@@ -125,8 +129,14 @@
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Booking">Đặt lịch</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Posts">Bài viết</a>
+                            <li class="nav-item dropdown">
+                                @* Thêm class "dropdown" *@
+                                <a class="nav-link dropdown-toggle" href="#" id="postsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Bài viết
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="postsDropdown">
+                                    @await Html.PartialAsync("_CategoryDropdownPartial")
+                                </ul>
                             </li>
                         </ul>
                         <ul class="navbar-nav">
