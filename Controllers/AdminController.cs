@@ -1,16 +1,17 @@
 ﻿using BCrypt.Net; // Thêm cho BCrypt, đảm bảo bạn đã cài đặt package BCrypt.Net-Next
 using BookingToursWeb.Data;
 using BookingToursWeb.Models;
+using Microsoft.AspNetCore.Hosting; // Thêm dòng này để sử dụng IWebHostEnvironment
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using System; // Thêm để sử dụng DateTime
 using System.Collections.Generic; // Thêm để sử dụng List
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting; // Thêm dòng này để sử dụng IWebHostEnvironment
-using System.IO;
 
 
 namespace BookingToursWeb.Controllers
@@ -812,17 +813,7 @@ namespace BookingToursWeb.Controllers
         // Bạn đã có các placeholder cho chúng, tôi sẽ giữ nguyên
         
 
-        // GET: Admin/ManagePosts
-        public IActionResult ManagePosts()
-        {
-            if (!IsCurrentUserAdmin())
-            {
-                TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang này.";
-                return RedirectToAction("Index", "Home");
-            }
-            ViewData["Title"] = "Quản lý Bài đăng";
-            return View();
-        }
+
 
         [HttpGet]
         public async Task<IActionResult> ManagePanoramas()
@@ -1039,6 +1030,458 @@ namespace BookingToursWeb.Controllers
 
             TempData["SuccessMessage"] = "Đánh giá đã được xóa thành công.";
             return RedirectToAction("ListReviewsForLocation", "Admin", new { locationId = locationId });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ManagePosts()
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang này.";
+                return RedirectToAction("Index", "Admin");
+            }
+
+            var allPosts = await _context.Posts
+                                      .Include(p => p.Category)
+                                      .Include(p => p.Author)
+                                      .OrderByDescending(p => p.PublishedAt)
+                                      .ToListAsync();
+
+            var allCategories = await _context.Categories.OrderBy(c => c.Name).ToListAsync();
+
+            var categoriesWithPosts = new List<CategoryWithPosts>();
+
+            foreach (var category in allCategories)
+            {
+                var postsInThisCategory = allPosts.Where(p => p.CategoryId == category.Id).ToList();
+                categoriesWithPosts.Add(new CategoryWithPosts
+                {
+                    CategoryId = category.Id,
+                    CategoryName = category.Name,
+                    Posts = postsInThisCategory
+                });
+            }
+
+            var viewModel = new PostManagementViewModel // <--- Giờ đây nó sẽ được tìm thấy trong BookingToursWeb.Models
+            {
+                CategoriesWithPosts = categoriesWithPosts
+            };
+
+            return View(viewModel);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> AddPost()
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang này.";
+                return RedirectToAction("Index", "Admin");
+            }
+
+            // Lấy danh sách các danh mục để đổ vào DropdownList
+            ViewData["CategoryId"] = new SelectList(await _context.Categories.OrderBy(c => c.Name).ToListAsync(), "Id", "Name");
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddPost([Bind("Title,Content,CategoryId,ImageUrl")] Post post, IFormFile? imageFile)
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền thực hiện hành động này.";
+                return RedirectToAction("Index", "Admin");
+            }
+
+            // Lấy AuthorId từ session (người dùng hiện tại)
+            // THAY ĐỔI TỪ GetString SANG GetInt32
+            var currentUserIdInt = HttpContext.Session.GetInt32("UserId");
+            if (currentUserIdInt == null) // Kiểm tra nếu giá trị là null (không có trong session hoặc lỗi)
+            {
+                ModelState.AddModelError("", "Không thể xác định tác giả bài viết. Vui lòng đăng nhập lại.");
+                ViewData["CategoryId"] = new SelectList(await _context.Categories.OrderBy(c => c.Name).ToListAsync(), "Id", "Name", post.CategoryId);
+                _logger.LogWarning("Không thể lấy UserId (int) từ session. UserIdInt is NULL.");
+                return View(post);
+            }
+            post.AuthorId = currentUserIdInt.Value; // Gán AuthorId từ session (sử dụng .Value để lấy giá trị int)
+
+            // Đặt PublishedAt và UpdatedAt thủ công
+            post.PublishedAt = DateTime.UtcNow;
+            post.UpdatedAt = DateTime.UtcNow;
+
+            // Xử lý upload hình ảnh
+            if (imageFile != null && imageFile.Length > 0)
+            {
+                var uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "post_images");
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                var uniqueFileName = Guid.NewGuid().ToString() + "_" + imageFile.FileName;
+                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await imageFile.CopyToAsync(fileStream);
+                }
+                post.ImageUrl = "/uploads/post_images/" + uniqueFileName;
+            }
+
+            if (ModelState.IsValid)
+            {
+                _context.Add(post);
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = "Bài đăng đã được thêm thành công.";
+                return RedirectToAction(nameof(ManagePosts));
+            }
+
+            ViewData["CategoryId"] = new SelectList(await _context.Categories.OrderBy(c => c.Name).ToListAsync(), "Id", "Name", post.CategoryId);
+            return View(post);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> EditPost(int? id)
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang này.";
+                return RedirectToAction("Index", "Admin");
+            }
+
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            // Lấy bài đăng theo ID, bao gồm thông tin Category và Author
+            var post = await _context.Posts
+                                     .Include(p => p.Category)
+                                     .Include(p => p.Author)
+                                     .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (post == null)
+            {
+                return NotFound();
+            }
+
+            // Lấy danh sách các danh mục để đổ vào DropdownList
+            ViewData["CategoryId"] = new SelectList(await _context.Categories.OrderBy(c => c.Name).ToListAsync(), "Id", "Name", post.CategoryId);
+            return View(post);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditPost(int id, [Bind("Id,Title,Content,CategoryId,ImageUrl,AuthorId,PublishedAt")] Post post, IFormFile? newImageFile)
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền thực hiện hành động này.";
+                return RedirectToAction("Index", "Admin");
+            }
+
+            if (id != post.Id)
+            {
+                return NotFound();
+            }
+
+            // Lấy bài đăng gốc từ database để giữ lại các giá trị không được bind từ form (ví dụ: AuthorId, PublishedAt nếu không có trong Bind)
+            var postToUpdate = await _context.Posts.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id); // Dùng AsNoTracking để tránh lỗi theo dõi nếu update
+
+            if (postToUpdate == null)
+            {
+                return NotFound();
+            }
+
+            // Re-populate CategoryList if ModelState is invalid or for initial view
+            ViewData["CategoryId"] = new SelectList(await _context.Categories.OrderBy(c => c.Name).ToListAsync(), "Id", "Name", post.CategoryId);
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    // Giữ lại AuthorId và PublishedAt gốc, chỉ cập nhật các trường được phép
+                    // Hoặc bạn có thể thêm AuthorId và PublishedAt vào [Bind] nếu muốn hiển thị chúng ở form nhưng chỉ đọc
+                    // Nếu AuthorId không nằm trong bind, thì post.AuthorId sẽ là 0, cần lấy lại từ postToUpdate
+                    if (post.AuthorId == 0) // Điều này xảy ra nếu AuthorId không được bind từ form
+                    {
+                        post.AuthorId = postToUpdate.AuthorId;
+                    }
+                    if (post.PublishedAt == default(DateTime)) // Điều này xảy ra nếu PublishedAt không được bind từ form
+                    {
+                        post.PublishedAt = postToUpdate.PublishedAt;
+                    }
+                    post.UpdatedAt = DateTime.UtcNow; // Cập nhật thời gian chỉnh sửa
+
+                    // Xử lý hình ảnh mới
+                    if (newImageFile != null && newImageFile.Length > 0)
+                    {
+                        // Xóa hình ảnh cũ nếu có và không phải là hình ảnh mặc định (nếu bạn có)
+                        if (!string.IsNullOrEmpty(postToUpdate.ImageUrl) && postToUpdate.ImageUrl != "/placeholder.jpg") // Ví dụ: không xóa placeholder
+                        {
+                            var oldFilePath = Path.Combine(_webHostEnvironment.WebRootPath, postToUpdate.ImageUrl.TrimStart('/'));
+                            if (System.IO.File.Exists(oldFilePath))
+                            {
+                                System.IO.File.Delete(oldFilePath);
+                            }
+                        }
+
+                        var uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "post_images");
+                        if (!Directory.Exists(uploadsFolder))
+                        {
+                            Directory.CreateDirectory(uploadsFolder);
+                        }
+
+                        var uniqueFileName = Guid.NewGuid().ToString() + "_" + newImageFile.FileName;
+                        var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                        using (var fileStream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await newImageFile.CopyToAsync(fileStream);
+                        }
+                        post.ImageUrl = "/uploads/post_images/" + uniqueFileName; // Cập nhật URL hình ảnh mới
+                    }
+                    else // Nếu không có file mới, giữ lại hình ảnh cũ
+                    {
+                        post.ImageUrl = postToUpdate.ImageUrl;
+                    }
+
+                    _context.Update(post);
+                    await _context.SaveChangesAsync();
+                    TempData["SuccessMessage"] = "Bài đăng đã được cập nhật thành công.";
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!PostExists(post.Id))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(ManagePosts));
+            }
+            return View(post);
+        }
+
+        private bool PostExists(int id)
+        {
+            return _context.Posts.Any(e => e.Id == id);
+        }
+
+        
+        // POST: Admin/DeletePost/5
+        [HttpPost, ActionName("DeletePost")] // Đặt tên Action là DeletePost, nhưng ActionName là DeletePost
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeletePostConfirmed(int id)
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền thực hiện hành động này.";
+                return RedirectToAction("Index", "Admin");
+            }
+
+            var post = await _context.Posts.FindAsync(id);
+            if (post == null)
+            {
+                TempData["ErrorMessage"] = "Bài đăng không tồn tại.";
+                return RedirectToAction(nameof(ManagePosts));
+            }
+
+            // Xóa hình ảnh liên quan nếu có
+            if (!string.IsNullOrEmpty(post.ImageUrl))
+            {
+                var imagePath = Path.Combine(_webHostEnvironment.WebRootPath, post.ImageUrl.TrimStart('/'));
+                if (System.IO.File.Exists(imagePath))
+                {
+                    try
+                    {
+                        System.IO.File.Delete(imagePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Lỗi khi xóa file hình ảnh cho bài đăng ID {PostId}: {ImagePath}", post.Id, imagePath);
+                        // Bạn có thể chọn không hiển thị lỗi này cho người dùng cuối
+                        // hoặc ghi log và tiếp tục xóa bài đăng nếu việc xóa file không quá quan trọng.
+                    }
+                }
+            }
+
+            _context.Posts.Remove(post);
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "Bài đăng đã được xóa thành công.";
+            return RedirectToAction(nameof(ManagePosts));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ManageCategories()
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang này.";
+                return RedirectToAction("Index", "Admin"); // Chuyển hướng về Admin Dashboard hoặc trang chính
+            }
+
+            // Lấy tất cả các danh mục từ database
+            var categories = await _context.Categories.ToListAsync();
+            return View(categories);
+        }
+
+        [HttpGet]
+        public IActionResult AddCategory()
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền thực hiện hành động này.";
+                return RedirectToAction("Index", "Admin");
+            }
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddCategory([Bind("Name")] Category category)
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền thực hiện hành động này.";
+                return RedirectToAction("Index", "Admin");
+            }
+
+            if (ModelState.IsValid)
+            {
+                // Kiểm tra trùng tên danh mục (không phân biệt chữ hoa/thường để tránh trùng lặp logic)
+                if (await _context.Categories.AnyAsync(c => c.Name.ToLower() == category.Name.ToLower()))
+                {
+                    ModelState.AddModelError("Name", "Tên danh mục đã tồn tại.");
+                    return View(category);
+                }
+
+                _context.Add(category);
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = "Danh mục đã được thêm thành công.";
+                return RedirectToAction(nameof(ManageCategories));
+            }
+            return View(category);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> EditCategory(int? id)
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang này.";
+                return RedirectToAction("Index", "Admin");
+            }
+
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var category = await _context.Categories.FindAsync(id);
+            if (category == null)
+            {
+                return NotFound();
+            }
+            return View(category);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditCategory(int id, [Bind("Id,Name")] Category category)
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền thực hiện hành động này.";
+                return RedirectToAction("Index", "Admin");
+            }
+
+            if (id != category.Id)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    // Kiểm tra trùng tên danh mục (trừ chính danh mục đang sửa, không phân biệt chữ hoa/thường)
+                    if (await _context.Categories.AnyAsync(c => c.Name.ToLower() == category.Name.ToLower() && c.Id != category.Id))
+                    {
+                        ModelState.AddModelError("Name", "Tên danh mục đã tồn tại.");
+                        return View(category);
+                    }
+
+                    _context.Update(category);
+                    await _context.SaveChangesAsync();
+                    TempData["SuccessMessage"] = "Danh mục đã được cập nhật thành công.";
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!CategoryExists(category.Id))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(ManageCategories));
+            }
+            return View(category);
+        }
+
+        [HttpPost, ActionName("DeleteCategory")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteCategoryConfirmed(int id)
+        {
+            if (!IsCurrentUserAdmin())
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền thực hiện hành động này.";
+                return RedirectToAction("Index", "Admin");
+            }
+
+            var category = await _context.Categories.FindAsync(id);
+            if (category != null)
+            {
+                try
+                {
+                    _context.Categories.Remove(category);
+                    await _context.SaveChangesAsync();
+                    TempData["SuccessMessage"] = "Danh mục đã được xóa thành công.";
+                }
+                catch (DbUpdateException ex) // Bắt lỗi khi có khóa ngoại
+                {
+                    // Log lỗi để debug
+                    _logger.LogError(ex, "Lỗi khi xóa danh mục {CategoryId}", id);
+
+                    // Kiểm tra nếu lỗi là do vi phạm ràng buộc khóa ngoại (posts vẫn liên kết)
+                    if (ex.InnerException is Microsoft.Data.SqlClient.SqlException sqlEx && sqlEx.Number == 547) // Lỗi 547 là lỗi ràng buộc khóa ngoại
+                    {
+                        TempData["ErrorMessage"] = "Không thể xóa danh mục này vì có bài đăng đang liên kết đến nó. Vui lòng xóa hoặc chuyển các bài đăng đó sang danh mục khác trước.";
+                    }
+                    else
+                    {
+                        TempData["ErrorMessage"] = "Đã xảy ra lỗi không xác định khi xóa danh mục.";
+                    }
+                    return RedirectToAction(nameof(ManageCategories));
+                }
+            }
+            else
+            {
+                TempData["ErrorMessage"] = "Không tìm thấy danh mục để xóa.";
+            }
+            return RedirectToAction(nameof(ManageCategories));
+        }
+
+        private bool CategoryExists(int id)
+        {
+            return _context.Categories.Any(e => e.Id == id);
         }
     }
 }

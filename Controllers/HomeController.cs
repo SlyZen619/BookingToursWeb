@@ -6,7 +6,7 @@ using System.Diagnostics;
 using Newtonsoft.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies; // Đảm bảo đã có dòng này
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace BookingToursWeb.Controllers
 {
@@ -21,9 +21,19 @@ namespace BookingToursWeb.Controllers
             _context = context;
         }
 
+        // Phương thức hỗ trợ để tải danh mục vào ViewBag cho _Layout
+        // Gọi phương thức này trong TẤT CẢ các action render ra view sử dụng _Layout.cshtml
+        private async Task LoadCategoriesForLayout()
+        {
+            // Lấy danh mục và sắp xếp theo tên
+            ViewBag.Categories = await _context.Categories.OrderBy(c => c.Name).ToListAsync();
+        }
+
         // Action mặc định - Trang chủ
         public async Task<IActionResult> Index()
         {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout
+
             try
             {
                 var allPlaces = await _context.Locations
@@ -47,9 +57,10 @@ namespace BookingToursWeb.Controllers
         }
 
         // GET: Home/Booking
-        // Thêm tham số optional 'locationId' để xử lý yêu cầu từ trang chi tiết địa điểm.
         public async Task<IActionResult> Booking(int? locationId)
         {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout
+
             ViewData["Title"] = "Đặt lịch Tour";
 
             var locationsData = await _context.Locations
@@ -57,7 +68,7 @@ namespace BookingToursWeb.Controllers
                                               {
                                                   l.Id,
                                                   l.Name,
-                                                  l.IsActive, // Giữ IsActive trong data
+                                                  l.IsActive,
                                                   l.TicketPrice,
                                                   l.ImageUrl
                                               })
@@ -75,15 +86,10 @@ namespace BookingToursWeb.Controllers
 
                 if (preselectedLocation != null)
                 {
-                    // KHÔNG ĐẶT TempData["ErrorMessage"] Ở ĐÂY NỮA
-                    // Nếu địa điểm không hoạt động, PlaceDetails đã xử lý và hiển thị thông báo.
-                    // Nếu người dùng chọn lại địa điểm không hoạt động từ trang Booking,
-                    // validation client-side hoặc ModelState sẽ xử lý.
                     ViewBag.PreselectedLocationId = preselectedLocation.Id;
                     ViewBag.PreselectedLocationName = preselectedLocation.Name;
                     ViewBag.PreselectedLocationTicketPrice = preselectedLocation.TicketPrice;
 
-                    // Thông báo lỗi nếu địa điểm không hoạt động (cho trường hợp người dùng direct link hoặc thay đổi IsActive sau khi vào trang)
                     if (!preselectedLocation.IsActive)
                     {
                         TempData["ErrorMessage"] = "Địa điểm này hiện không hoạt động. Vui lòng chọn địa điểm khác.";
@@ -91,7 +97,6 @@ namespace BookingToursWeb.Controllers
                 }
                 else
                 {
-                    // Nếu locationId không tồn tại
                     ViewBag.PreselectedLocationId = null;
                     TempData["ErrorMessage"] = "Địa điểm được chọn không tồn tại.";
                 }
@@ -109,6 +114,8 @@ namespace BookingToursWeb.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateBooking(Booking booking)
         {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout (quan trọng nếu có lỗi validation và view được trả về)
+
             var userId = HttpContext.Session.GetInt32("UserId");
             if (userId == null)
             {
@@ -184,12 +191,12 @@ namespace BookingToursWeb.Controllers
                     ViewBag.PreselectedLocationId = selectedLoc.Id;
                     ViewBag.PreselectedLocationName = selectedLoc.Name;
                     ViewBag.PreselectedLocationTicketPrice = selectedLoc.TicketPrice;
-                    ViewBag.HideBackButton = false; // Luôn hiển thị nút khi đã chọn địa điểm (dù có lỗi validation)
+                    ViewBag.HideBackButton = false;
                 }
                 else
                 {
                     ViewBag.PreselectedLocationId = null;
-                    ViewBag.HideBackButton = true; // Ẩn nút nếu không có địa điểm nào được chọn
+                    ViewBag.HideBackButton = true;
                 }
 
                 ViewData["Title"] = "Đặt lịch Tour";
@@ -227,12 +234,12 @@ namespace BookingToursWeb.Controllers
                     ViewBag.PreselectedLocationId = selectedLoc.Id;
                     ViewBag.PreselectedLocationName = selectedLoc.Name;
                     ViewBag.PreselectedLocationTicketPrice = selectedLoc.TicketPrice;
-                    ViewBag.HideBackButton = false; // Luôn hiển thị nút khi đã chọn địa điểm (dù có lỗi db)
+                    ViewBag.HideBackButton = false;
                 }
                 else
                 {
                     ViewBag.PreselectedLocationId = null;
-                    ViewBag.HideBackButton = true; // Ẩn nút nếu không có địa điểm nào được chọn
+                    ViewBag.HideBackButton = true;
                 }
 
                 ViewData["Title"] = "Đặt lịch Tour";
@@ -244,6 +251,8 @@ namespace BookingToursWeb.Controllers
         [HttpGet]
         public async Task<IActionResult> GetBookingsCountByDateAndLocation(DateTime date, int locationId)
         {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout (Nếu bạn dùng Layout cho các API endpoint, thường thì không)
+
             try
             {
                 var count = await _context.Bookings
@@ -259,8 +268,9 @@ namespace BookingToursWeb.Controllers
         }
 
         // Trang xác nhận đặt lịch thành công
-        public IActionResult BookingSuccess()
+        public async Task<IActionResult> BookingSuccess() // Thêm async/await và LoadCategoriesForLayout
         {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout
             ViewData["Title"] = "Đặt lịch thành công";
             return View();
         }
@@ -268,6 +278,8 @@ namespace BookingToursWeb.Controllers
         // Trang hồ sơ người dùng và lịch sử đặt lịch
         public async Task<IActionResult> Profile()
         {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout
+
             ViewData["Title"] = "Hồ sơ của tôi";
 
             var userId = HttpContext.Session.GetInt32("UserId");
@@ -309,40 +321,122 @@ namespace BookingToursWeb.Controllers
             }
         }
 
-        public async Task<IActionResult> PlaceDetails(int? id)
+        // Action hiển thị TẤT CẢ bài viết
+        public async Task<IActionResult> Posts()
         {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout
+
+            var allPosts = await _context.Posts
+                                       .Include(p => p.Category)
+                                       .Include(p => p.Author)
+                                       .OrderByDescending(p => p.PublishedAt)
+                                       .ToListAsync();
+
+            ViewData["CurrentCategoryName"] = "Tất cả bài viết"; // Để hiển thị tiêu đề trên trang
+            ViewData["Title"] = ViewData["CurrentCategoryName"]; // Đặt title cho trang
+            return View(allPosts); // Trả về danh sách tất cả bài viết
+        }
+
+        // ACTION MỚI: Hiển thị bài viết theo danh mục
+        public async Task<IActionResult> PostsByCategory(int? categoryId)
+        {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout
+
+            if (categoryId == null)
+            {
+                // Nếu không có categoryId, chuyển hướng về trang tất cả bài viết
+                return RedirectToAction(nameof(Posts));
+            }
+
+            var category = await _context.Categories.FindAsync(categoryId);
+            if (category == null)
+            {
+                TempData["ErrorMessage"] = "Danh mục không tồn tại.";
+                return RedirectToAction(nameof(Posts)); // Chuyển hướng về trang tất cả bài viết
+            }
+
+            var postsInCategory = await _context.Posts
+                                                .Where(p => p.CategoryId == categoryId)
+                                                .Include(p => p.Category)
+                                                .Include(p => p.Author)
+                                                .OrderByDescending(p => p.PublishedAt)
+                                                .ToListAsync();
+
+            ViewData["CurrentCategoryName"] = category.Name; // Dùng để hiển thị tên danh mục trên trang
+            ViewData["Title"] = $"Bài viết trong danh mục: {category.Name}"; // Đặt title cho trang
+            return View("Posts", postsInCategory); // Sử dụng lại View "Posts" để hiển thị, chỉ khác dữ liệu
+        }
+
+        // ACTION MỚI: Hiển thị chi tiết bài đăng
+        public async Task<IActionResult> PostDetails(int? id)
+        {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout
+
             if (id == null)
             {
-                _logger.LogWarning("PlaceDetails: ID địa điểm không được cung cấp.");
-                TempData["ErrorMessage"] = "Địa điểm không tồn tại hoặc không tìm thấy.";
-                return RedirectToAction("Index"); // Chuyển hướng về trang chủ
+                _logger.LogWarning("PostDetails: ID bài đăng không được cung cấp.");
+                TempData["ErrorMessage"] = "Bài đăng không tồn tại hoặc không tìm thấy.";
+                return RedirectToAction(nameof(Posts)); // Chuyển hướng về trang danh sách bài viết
             }
 
             try
             {
-                // Bao gồm Reviews và Users để hiển thị thông tin đánh giá
+                var post = await _context.Posts
+                                         .Include(p => p.Author) // Bao gồm thông tin tác giả
+                                         .Include(p => p.Category) // Bao gồm thông tin danh mục
+                                         .FirstOrDefaultAsync(p => p.Id == id); //
+
+                if (post == null)
+                {
+                    _logger.LogWarning($"PostDetails: Không tìm thấy bài đăng với ID: {id}.");
+                    TempData["ErrorMessage"] = "Bài đăng không tồn tại hoặc không tìm thấy.";
+                    return RedirectToAction(nameof(Posts)); // Chuyển hướng về trang danh sách bài viết
+                }
+
+                ViewData["Title"] = post.Title; // Đặt tiêu đề cho trang dựa trên tiêu đề bài viết
+                return View(post); // Truyền đối tượng bài đăng sang View
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Lỗi khi tải chi tiết bài đăng với ID: {id}.");
+                TempData["ErrorMessage"] = "Có lỗi xảy ra khi tải thông tin bài đăng. Vui lòng thử lại sau.";
+                return View("Error");
+            }
+        }
+
+        public async Task<IActionResult> PlaceDetails(int? id)
+        {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout
+
+            if (id == null)
+            {
+                _logger.LogWarning("PlaceDetails: ID địa điểm không được cung cấp.");
+                TempData["ErrorMessage"] = "Địa điểm không tồn tại hoặc không tìm thấy.";
+                return RedirectToAction("Index");
+            }
+
+            try
+            {
                 var location = await _context.Locations
                                              .Include(l => l.Reviews)
-                                                .ThenInclude(r => r.User) // Bao gồm User cho mỗi đánh giá
+                                                 .ThenInclude(r => r.User)
                                              .FirstOrDefaultAsync(l => l.Id == id);
 
                 if (location == null)
                 {
                     _logger.LogWarning($"PlaceDetails: Không tìm thấy địa điểm với ID: {id}.");
                     TempData["ErrorMessage"] = "Địa điểm không tồn tại hoặc không tìm thấy.";
-                    return RedirectToAction("Index"); // Chuyển hướng về trang chủ
+                    return RedirectToAction("Index");
                 }
 
                 ViewData["Title"] = location.Name;
                 ViewBag.LocationIsActive = location.IsActive;
 
-                // Lấy User ID từ Session và ép kiểu tường minh để tránh lỗi dynamic operation
                 int? currentUserId = HttpContext.Session.GetInt32("UserId");
-                ViewBag.CurrentUserId = currentUserId; // Gán vào ViewBag để dùng trong View
+                ViewBag.CurrentUserId = currentUserId;
 
-                // Kiểm tra xem người dùng hiện tại đã đánh giá địa điểm này chưa
                 bool hasUserReviewed = false;
-                if (currentUserId.HasValue) // Chỉ kiểm tra nếu userId có giá trị
+                if (currentUserId.HasValue)
                 {
                     var existingReview = await _context.Reviews
                         .FirstOrDefaultAsync(r => r.LocationId == id && r.UserId == currentUserId.Value);
@@ -360,11 +454,13 @@ namespace BookingToursWeb.Controllers
             }
         }
 
-        // POST: Home/AddReview (Đã đổi tên từ SubmitReview)
+        // POST: Home/AddReview
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddReview(Review review) // Đổi tên action và tham số
+        public async Task<IActionResult> AddReview(Review review)
         {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout (quan trọng nếu có lỗi validation và view được trả về)
+
             var userId = HttpContext.Session.GetInt32("UserId");
             if (userId == null)
             {
@@ -372,12 +468,10 @@ namespace BookingToursWeb.Controllers
                 return RedirectToAction("Login", "Account");
             }
 
-            // Gán UserId từ session và thời gian tạo/cập nhật
             review.UserId = userId.Value;
             review.CreatedAt = DateTime.UtcNow;
             review.UpdatedAt = DateTime.UtcNow;
 
-            // Kiểm tra xem người dùng đã đánh giá địa điểm này chưa
             var existingReview = await _context.Reviews
                 .FirstOrDefaultAsync(r => r.LocationId == review.LocationId && r.UserId == userId.Value);
 
@@ -387,17 +481,12 @@ namespace BookingToursWeb.Controllers
                 return RedirectToAction("PlaceDetails", new { id = review.LocationId });
             }
 
-            // KHÔNG còn gán review.Status vì Review model không có thuộc tính Status
-
             if (ModelState.IsValid)
             {
                 try
                 {
                     _context.Add(review);
                     await _context.SaveChangesAsync();
-
-                    // KHÔNG CẬP NHẬT AverageRating và TotalReviews của Location
-                    // Vì các thuộc tính này đã bị loại bỏ khỏi model Location theo yêu cầu.
 
                     TempData["SuccessMessage"] = "Đánh giá của bạn đã được gửi thành công!";
                     return RedirectToAction("PlaceDetails", new { id = review.LocationId });
@@ -410,11 +499,12 @@ namespace BookingToursWeb.Controllers
             }
             else
             {
-                // Thu thập và hiển thị lỗi ModelState nếu có
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
                 TempData["ErrorMessage"] = "Đã có lỗi xảy ra trong dữ liệu đánh giá: " + string.Join("; ", errors);
             }
 
+            // Nếu có lỗi, đảm bảo rằng tất cả ViewBag cần thiết để render lại PlaceDetails (nếu quay lại đó) vẫn được thiết lập.
+            // Hoặc đơn giản là redirect về trang chi tiết địa điểm để người dùng thấy lỗi qua TempData
             return RedirectToAction("PlaceDetails", new { id = review.LocationId });
         }
 
@@ -422,6 +512,8 @@ namespace BookingToursWeb.Controllers
         [HttpGet]
         public async Task<IActionResult> PanoramaPointsForLocation(int locationId)
         {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout
+
             var location = await _context.Locations
                                          .FirstOrDefaultAsync(l => l.Id == locationId);
 
@@ -438,35 +530,37 @@ namespace BookingToursWeb.Controllers
 
             ViewData["LocationName"] = location.Name;
             ViewData["LocationId"] = locationId;
+            ViewData["Title"] = $"Các điểm Panorama của {location.Name}"; // Đặt title cho trang
 
             return View(panoramaPoints);
         }
 
         [HttpGet]
-        // THAY ĐỔI: Thêm tham số string? returnUrl = null
         public async Task<IActionResult> ViewPanorama(int id, string? returnUrl = null)
         {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout
+
             var panoramaPoint = await _context.PanoramaPoints
-                                              .Include(p => p.Location) // Bao gồm Location để có tên địa điểm
-                                              .FirstOrDefaultAsync(p => p.Id == id);
+                                             .Include(p => p.Location)
+                                             .FirstOrDefaultAsync(p => p.Id == id);
 
             if (panoramaPoint == null)
             {
                 TempData["ErrorMessage"] = "Không tìm thấy điểm nhìn panorama này.";
-                // Mặc định quay về trang chủ nếu không tìm thấy panorama
                 return RedirectToAction("Index", "Home");
             }
 
             ViewData["Title"] = $"Xem Panorama: {panoramaPoint.Name}";
-            ViewData["LocationId"] = panoramaPoint.LocationId; // Để nút quay lại trang chi tiết địa điểm
-            ViewData["ReturnUrl"] = returnUrl; // LƯU returnUrl vào ViewData
+            ViewData["LocationId"] = panoramaPoint.LocationId;
+            ViewData["ReturnUrl"] = returnUrl;
 
             return View(panoramaPoint);
         }
 
 
-        public IActionResult Privacy()
+        public async Task<IActionResult> Privacy() // Thêm async/await và LoadCategoriesForLayout
         {
+            await LoadCategoriesForLayout(); // Tải danh mục cho layout
             ViewData["Title"] = "Chính sách bảo mật";
             return View();
         }
@@ -474,9 +568,10 @@ namespace BookingToursWeb.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
+            // Error page doesn't necessarily need categories, but adding it just in case _Layout is used.
+            // If you have a separate simplified error layout, you might not need this.
+            // await LoadCategoriesForLayout(); // Optional for error page
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
-
-
     }
 }
