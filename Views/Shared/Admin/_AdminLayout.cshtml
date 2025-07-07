@@ -328,9 +328,13 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManagePosts" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManagePosts">
-                            <span data-feather="file-text" class="align-text-bottom"></span>
-                            Quản lý Bài đăng
+                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManageCategories" || ViewContext.RouteData.Values["Action"]?.ToString() == "AddCategory" || ViewContext.RouteData.Values["Action"]?.ToString() == "EditCategory" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManageCategories">
+                            <span data-feather="grid" class="align-text-bottom"></span> Quản lý Danh mục Bài đăng
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManagePosts" || ViewContext.RouteData.Values["Action"]?.ToString() == "AddPost" || ViewContext.RouteData.Values["Action"]?.ToString() == "EditPost" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManagePosts">
+                            <span data-feather="file-text" class="align-text-bottom"></span> Quản lý Bài đăng
                         </a>
                     </li>
                     <li class="nav-item">
