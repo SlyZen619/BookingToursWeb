@@ -1,5 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+// Bỏ using BookingToursWeb.Models; nếu nó không còn dùng cho Category
+// Nếu bạn muốn giữ lại các models khác trong BookingToursWeb.Models thì giữ nguyên using
 
 namespace BookingToursWeb.Models
 {
@@ -20,24 +22,24 @@ namespace BookingToursWeb.Models
         public required string Title { get; set; }
 
         [Required(ErrorMessage = "Nội dung không được để trống.")]
-        public required string Content { get; set; } // Content có thể rất dài, không giới hạn độ dài nếu dùng string
+        [Column(TypeName = "nvarchar(MAX)")] // Đảm bảo Content có thể lưu trữ nội dung dài
+        public required string Content { get; set; }
 
-        [StringLength(100)]
+        // === THAY ĐỔI Ở ĐÂY: Loại bỏ string Category và thêm CategoryId + Navigation Property ===
+        [Required(ErrorMessage = "Vui lòng chọn danh mục.")] // Đặt required nếu muốn bắt buộc chọn danh mục
         [Display(Name = "Danh Mục")]
-        public string? Category { get; set; }
+        public int CategoryId { get; set; } // Khóa ngoại tới bảng Categories
+        [ForeignKey("CategoryId")] // Chỉ định CategoryId là khóa ngoại
+        public Category? Category { get; set; } // Thuộc tính điều hướng để truy cập đối tượng Category liên quan
+        // === HẾT THAY ĐỔI ===
 
         [StringLength(500)]
         [Display(Name = "URL Hình ảnh")]
         public string? ImageUrl { get; set; }
 
-        [Display(Name = "Đã Xuất Bản")]
-        public bool IsPublished { get; set; } = false;
-
-        [Display(Name = "Ngày Xuất Bản")]
-        public DateTime? PublishedAt { get; set; } // Nullable nếu chưa xuất bản
-
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        [Display(Name = "Ngày Xuất Bản")]
+        public DateTime PublishedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
