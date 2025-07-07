@@ -1,0 +1,57 @@
+﻿@model BookingToursWeb.Models.Post
+
+@{
+    ViewData["Title"] = "Thêm Bài Đăng Mới";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+}
+
+<div class="container-fluid">
+    <h1 class="mt-4">Thêm Bài Đăng Mới</h1>
+    <hr />
+    <div class="row">
+        <div class="col-md-8">
+            <form asp-action="AddPost" method="post" enctype="multipart/form-data">
+                @* QUAN TRỌNG: Thêm enctype="multipart/form-data" để upload file *@
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="mb-3">
+                    <label asp-for="Title" class="form-label"></label>
+                    <input asp-for="Title" class="form-control" />
+                    <span asp-validation-for="Title" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Content" class="form-label"></label>
+                    <textarea asp-for="Content" class="form-control" rows="10"></textarea> @* Sử dụng textarea cho nội dung dài *@
+                    <span asp-validation-for="Content" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="CategoryId" class="form-label">Danh Mục</label>
+                    <select asp-for="CategoryId" class="form-control" asp-items="ViewBag.CategoryId">
+                        @* DropdownList cho danh mục *@
+                        <option value="">-- Chọn Danh Mục --</option>
+                    </select>
+                    <span asp-validation-for="CategoryId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="ImageUrl" class="form-label">Hình ảnh (tùy chọn)</label>
+                    <input type="file" name="imageFile" id="imageFile" class="form-control" accept="image/*" /> @* Input type file cho hình ảnh *@
+                    <span class="text-muted">Chỉ chấp nhận các file ảnh (jpg, png, gif, v.v.)</span>
+                </div>
+
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">Thêm Bài Đăng</button>
+                    <a asp-action="ManagePosts" class="btn btn-secondary">Quay lại Quản lý Bài đăng</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

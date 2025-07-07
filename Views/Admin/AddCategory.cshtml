@@ -1,0 +1,32 @@
+﻿@model BookingToursWeb.Models.Category
+@{
+    ViewData["Title"] = "Thêm Danh Mục Mới";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+}
+
+<div class="container-fluid">
+    <h1 class="mt-4">Thêm Danh Mục Mới</h1>
+    <hr />
+    <div class="row">
+        <div class="col-md-6">
+            <form asp-action="AddCategory" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <div class="mb-3">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">Thêm</button>
+                    <a asp-action="ManageCategories" class="btn btn-secondary">Quay lại Danh Sách</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

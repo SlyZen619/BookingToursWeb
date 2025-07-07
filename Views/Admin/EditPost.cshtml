@@ -1,0 +1,71 @@
+﻿@model BookingToursWeb.Models.Post
+
+@{
+    ViewData["Title"] = "Sửa Bài Đăng";
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
+}
+
+<div class="container-fluid">
+    <h1 class="mt-4">Sửa Bài Đăng</h1>
+    <hr />
+    <div class="row">
+        <div class="col-md-8">
+            <form asp-action="EditPost" method="post" enctype="multipart/form-data">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <input type="hidden" asp-for="Id" /> @* GIỮ LẠI ID CỦA BÀI ĐĂNG *@
+                <input type="hidden" asp-for="AuthorId" /> @* GIỮ LẠI AUTHOR ID (không cho phép sửa) *@
+                <input type="hidden" asp-for="PublishedAt" /> @* GIỮ LẠI NGÀY XUẤT BẢN (không cho phép sửa) *@
+                <input type="hidden" asp-for="ImageUrl" /> @* GIỮ LẠI URL ẢNH HIỆN TẠI NẾU KHÔNG CÓ ẢNH MỚI *@
+
+                <div class="mb-3">
+                    <label asp-for="Title" class="form-label"></label>
+                    <input asp-for="Title" class="form-control" />
+                    <span asp-validation-for="Title" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Content" class="form-label"></label>
+                    <textarea asp-for="Content" class="form-control" rows="10"></textarea>
+                    <span asp-validation-for="Content" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="CategoryId" class="form-label">Danh Mục</label>
+                    <select asp-for="CategoryId" class="form-control" asp-items="ViewBag.CategoryId">
+                        <option value="">-- Chọn Danh Mục --</option>
+                    </select>
+                    <span asp-validation-for="CategoryId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Hình ảnh hiện tại:</label><br />
+                    @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                    {
+                        <img src="@Model.ImageUrl" alt="Hình ảnh bài đăng" class="img-thumbnail" style="max-width: 200px; max-height: 200px; object-fit: cover;" />
+                    }
+                    else
+                    {
+                        <p>Không có hình ảnh hiện tại.</p>
+                    }
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="ImageUrl" class="form-label">Chọn hình ảnh mới (để thay đổi)</label>
+                    <input type="file" name="newImageFile" id="newImageFile" class="form-control" accept="image/*" />
+                    <span class="text-muted">Để trống nếu không muốn thay đổi hình ảnh.</span>
+                </div>
+
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">Lưu Thay Đổi</button>
+                    <a asp-action="ManagePosts" class="btn btn-secondary">Quay lại Quản lý Bài đăng</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
