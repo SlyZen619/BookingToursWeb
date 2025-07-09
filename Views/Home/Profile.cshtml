@@ -78,11 +78,39 @@
                                     <td>
                                         @item.TotalAmount.ToString("N0") VNĐ
                                     </td>
-                                    <td>
-                                        <span class="badge @(item.Status == "Pending" ? "bg-warning text-dark" : item.Status == "Confirmed" ? "bg-success" : "bg-danger")">
-                                            @item.Status
-                                        </span>
-                                    </td>
+                                        <td>
+                                            @{
+                                                string statusClass = "";
+                                                string statusText = "";
+
+                                                switch (item.Status)
+                                                {
+                                                    case "Pending":
+                                                        statusText = "Đang chờ duyệt";
+                                                        statusClass = "bg-warning text-dark";
+                                                        break;
+                                                    case "Confirmed":
+                                                        statusText = "Đã xác nhận";
+                                                        statusClass = "bg-success";
+                                                        break;
+                                                    case "Cancelled":
+                                                        statusText = "Đã hủy";
+                                                        statusClass = "bg-danger"; // Hoặc màu khác nếu muốn cho Cancelled
+                                                        break;
+                                                    case "Completed":
+                                                        statusText = "Đã hoàn thành";
+                                                        statusClass = "bg-info"; // Ví dụ: màu xanh da trời cho đã hoàn thành
+                                                        break;
+                                                    default:
+                                                        statusText = item.Status; // Giữ nguyên nếu không khớp
+                                                        statusClass = "bg-secondary"; // Màu mặc định
+                                                        break;
+                                                }
+                                            }
+                                            <span class="badge @statusClass">
+                                                @statusText
+                                            </span>
+                                        </td>
                                     <td>
                                         @(string.IsNullOrEmpty(item.SpecialNotes) ? "Không có" : item.SpecialNotes)
                                     </td>
