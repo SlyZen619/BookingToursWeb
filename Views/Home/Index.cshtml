@@ -1,66 +1,300 @@
 ﻿@model BookingToursWeb.Models.HomeViewModel
-
 @{
-    ViewData["Title"] = "Trang chủ";
+    ViewData["Title"] = "Địa điểm nổi tiếng";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="text-center py-4">
-    <h1 class="display-4">Chào mừng</h1>
+<div class="text-center">
+    <h1 class="display-4">Các Địa điểm Nổi tiếng</h1>
+    <p>Khám phá những điểm đến hấp dẫn nhất!</p>
+</div>
 
-    @{
-        // Lấy thông tin username từ Session
-        var username = Context.Session.GetString("Username");
-    }
-
-    @if (!string.IsNullOrEmpty(username))
+<div class="row">
+    @if (Model.FamousPlaces != null && Model.FamousPlaces.Any())
     {
-        <p>Xin chào, @username!</p>
+        @foreach (var place in Model.FamousPlaces)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm">
+                    @if (!string.IsNullOrEmpty(place.ImageUrl))
+                    {
+                        <img src="@place.ImageUrl" class="card-img-top" alt="@place.Name" style="height: 200px; object-fit: cover;">
+                    }
+                    else
+                    {
+                        <img src="https://via.placeholder.com/400x200?text=No+Image" class="card-img-top" alt="No Image" style="height: 200px; object-fit: cover;">
+                    }
+                    <div class="card-body">
+                        <h5 class="card-title">@place.Name</h5>
+                        <p class="card-text text-muted">@place.Description</p>
+                        <a asp-controller="Home" asp-action="PlaceDetails" asp-route-id="@place.Id" class="btn btn-outline-primary mt-3">Khám phá</a>
+
+                        @* Chỉ giữ lại một nút để mở modal bản đồ *@
+                        @if (place.Latitude.HasValue && place.Longitude.HasValue)
+                        {
+                            <button type="button" class="btn btn-outline-info mt-3 map-button"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#mapModal"
+                                    data-latitude="@(place.Latitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                                    data-longitude="@(place.Longitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                                    data-placename="@place.Name">
+                                <i class="fas fa-map-marker-alt"></i> Xem trên Bản đồ
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
     }
     else
     {
-        <p>Vui lòng <a asp-controller="Account" asp-action="Login">đăng nhập</a> hoặc <a asp-controller="Account" asp-action="Register">đăng ký</a>.</p>
+        <div class="col-12">
+            <p>Không có địa điểm nổi tiếng nào để hiển thị.</p>
+        </div>
     }
-
 </div>
 
-<section class="famous-places-section py-5">
-    <div class="container">
-        <h2 class="text-center mb-4">Tất cả Địa điểm</h2> <p class="text-center text-muted mb-5">Được thêm vào hệ thống</p>
-
-        @if (Model != null && Model.FamousPlaces != null && Model.FamousPlaces.Any())
-        {
-            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                @foreach (var place in Model.FamousPlaces)
-                {
-                    <div class="col">
-                        <div class="card h-100 shadow-sm">
-                            @if (!string.IsNullOrEmpty(place.ImageUrl))
-                            {
-                                <img src="@place.ImageUrl" class="card-img-top" alt="@place.Name" style="height: 200px; object-fit: cover;">
-                            }
-                            else
-                            {
-                                <img src="/images/placeholder.jpg" class="card-img-top" alt="No Image" style="height: 200px; object-fit: cover;">
-                            }
-                            <div class="card-body d-flex flex-column">
-                                <h5 class="card-title text-center">@place.Name</h5>
-                                <p class="card-text text-center text-muted">@place.Description</p>
-                                <div class="mt-auto text-center">
-                                    <a asp-controller="Home" asp-action="PlaceDetails" asp-route-id="@place.Id" class="btn btn-outline-primary mt-3">Khám phá</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                }
+<div class="modal fade" id="mapModal" tabindex="-1" aria-labelledby="mapModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mapModalLabel">Vị trí Địa điểm</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-        }
-        else
-        {
-            <p class="text-center">Chưa có địa điểm nào được thêm vào hệ thống.</p>
-        }
+            <div class="modal-body">
+                <div id="mapControls" class="mb-3 text-center">
+                    <button id="viewLocationBtn" class="btn btn-info me-2"><i class="fas fa-map-marker-alt"></i> Xem vị trí</button>
+                    <button id="getDirectionsBtn" class="btn btn-success"><i class="fas fa-route"></i> Chỉ đường đến đây</button>
+                </div>
+                <div id="modalMap" style="height: 450px; width: 100%;"></div>
+                <div id="routeInfo" class="mt-3 text-center" style="font-weight: bold;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
     </div>
-</section>
+</div>
 
 @section Scripts {
+    <script>
+        let leafletMap;
+        let leafletMarker;
+        let routingControl;
+        let currentTargetLocation; // Biến để lưu trữ tọa độ địa điểm đang xem
+
+        const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+
+        const esriWorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            maxZoom: 19
+        });
+
+        const baseMaps = {
+            "OpenStreetMap": openStreetMap,
+            "Vệ tinh (Esri)": esriWorldImagery
+        };
+
+        function formatDistance(meters) {
+            if (meters < 1000) {
+                return meters.toFixed(0) + ' m';
+            } else {
+                return (meters / 1000).toFixed(2) + ' km';
+            }
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const remainingMinutes = minutes % 60;
+
+            if (hours > 0) {
+                return `${hours} giờ ${remainingMinutes} phút`;
+            } else if (minutes > 0) {
+                return `${minutes} phút`;
+            } else {
+                return `${seconds} giây`;
+            }
+        }
+
+        // Hàm để reset bản đồ về trạng thái ban đầu (chỉ hiển thị địa điểm đích)
+        function resetMapToTargetLocation() {
+            if (routingControl) {
+                leafletMap.removeControl(routingControl);
+                routingControl = null;
+            }
+            if (leafletMarker) {
+                leafletMap.removeLayer(leafletMarker);
+            }
+            if (currentTargetLocation) {
+                leafletMarker = L.marker(currentTargetLocation).addTo(leafletMap)
+                    .bindPopup(document.getElementById('mapModalLabel').textContent.replace('Vị trí: ', '')).openPopup();
+                leafletMap.setView(currentTargetLocation, 15);
+            }
+            document.getElementById('routeInfo').textContent = '';
+            leafletMap.invalidateSize();
+        }
+
+        document.getElementById('mapModal').addEventListener('shown.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const latitude = parseFloat(button.getAttribute('data-latitude'));
+            const longitude = parseFloat(button.getAttribute('data-longitude'));
+            const placeName = button.getAttribute('data-placename');
+
+            currentTargetLocation = L.latLng(latitude, longitude); // Lưu trữ tọa độ địa điểm đang xem
+
+            document.getElementById('mapModalLabel').textContent = 'Vị trí: ' + placeName;
+            document.getElementById('routeInfo').textContent = ''; // Xóa thông tin route cũ
+
+            if (!leafletMap) {
+                leafletMap = L.map('modalMap', {
+                    layers: [openStreetMap]
+                }).setView(currentTargetLocation, 15);
+
+                L.control.layers(baseMaps).addTo(leafletMap);
+            } else {
+                // Đảm bảo xóa routingControl cũ nếu có
+                if (routingControl) {
+                    leafletMap.removeControl(routingControl);
+                    routingControl = null;
+                }
+                // Nếu bản đồ đã tồn tại, xóa marker cũ nếu có
+                if (leafletMarker) {
+                    leafletMap.removeLayer(leafletMarker);
+                    leafletMarker = null;
+                }
+                leafletMap.setView(currentTargetLocation, 15);
+            }
+
+            // Mặc định hiển thị marker địa điểm khi modal mở
+            leafletMarker = L.marker(currentTargetLocation).addTo(leafletMap)
+                .bindPopup(placeName)
+                .openPopup();
+
+            leafletMap.invalidateSize();
+        });
+
+        document.getElementById('mapModal').addEventListener('hidden.bs.modal', function () {
+            if (leafletMap) {
+                if (routingControl) {
+                    leafletMap.removeControl(routingControl);
+                    routingControl = null;
+                }
+                leafletMap.remove();
+                leafletMap = null;
+                leafletMarker = null;
+                currentTargetLocation = null; // Xóa tọa độ địa điểm hiện tại
+            }
+        });
+
+        // Xử lý khi click nút "Xem vị trí" trong modal
+        document.getElementById('viewLocationBtn').addEventListener('click', function () {
+            resetMapToTargetLocation();
+        });
+
+        // Xử lý khi click nút "Chỉ đường đến đây" trong modal
+        document.getElementById('getDirectionsBtn').addEventListener('click', function () {
+            if (!currentTargetLocation) {
+                document.getElementById('routeInfo').textContent = 'Không có địa điểm đích để chỉ đường.';
+                return;
+            }
+
+            // Xóa marker và routingControl cũ trước khi tìm đường mới
+            if (leafletMarker) {
+                leafletMap.removeLayer(leafletMarker);
+                leafletMarker = null;
+            }
+            if (routingControl) {
+                leafletMap.removeControl(routingControl);
+                routingControl = null;
+            }
+            document.getElementById('routeInfo').textContent = 'Đang tìm vị trí hiện tại và tính toán đường đi...';
+
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const userLat = position.coords.latitude;
+                        const userLng = position.coords.longitude;
+                        const userLocation = L.latLng(userLat, userLng);
+
+                        routingControl = L.Routing.control({
+                            waypoints: [
+                                userLocation,
+                                currentTargetLocation
+                            ],
+                            router: L.Routing.osrmv1({
+                                serviceUrl: 'https://router.project-osrm.org/route/v1'
+                            }),
+                            createMarker: function (i, waypoint, n) {
+                                if (i === 0) {
+                                    return L.marker(waypoint.latLng, {
+                                        icon: L.icon({
+                                            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+                                            iconSize: [25, 41],
+                                            iconAnchor: [12, 41],
+                                            popupAnchor: [1, -34],
+                                            shadowSize: [41, 41]
+                                        })
+                                    }).bindPopup('Vị trí hiện tại của bạn').openPopup();
+                                } else if (i === n - 1) {
+                                    return L.marker(waypoint.latLng, {
+                                        icon: L.icon({
+                                            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+                                            iconSize: [25, 41],
+                                            iconAnchor: [12, 41],
+                                            popupAnchor: [1, -34],
+                                            shadowSize: [41, 41]
+                                        })
+                                    }).bindPopup(document.getElementById('mapModalLabel').textContent.replace('Vị trí: ', '')).openPopup();
+                                }
+                                return null;
+                            },
+                            routeWhileDragging: false,
+                            show: false,
+                            addWaypoints: false,
+                            draggableWaypoints: false
+                        }).addTo(leafletMap);
+
+                        routingControl.on('routesfound', function (e) {
+                            const routes = e.routes;
+                            const summary = routes[0].summary;
+                            const distance = formatDistance(summary.totalDistance);
+                            const time = formatTime(summary.totalTime);
+                            document.getElementById('routeInfo').textContent = `Khoảng cách: ${distance}, Thời gian: ${time}`;
+                        });
+
+                        leafletMap.fitBounds(L.latLngBounds(userLocation, currentTargetLocation).pad(0.5));
+                        leafletMap.invalidateSize();
+
+                    },
+                    (error) => {
+                        console.error("Lỗi khi lấy vị trí hiện tại:", error);
+                        document.getElementById('routeInfo').textContent = 'Không thể lấy vị trí hiện tại của bạn. Vui lòng bật dịch vụ vị trí.';
+                        // Vẫn hiển thị địa điểm đích nếu không lấy được vị trí hiện tại
+                        if (!leafletMarker) { // Chỉ thêm lại nếu chưa có
+                            leafletMarker = L.marker(currentTargetLocation).addTo(leafletMap)
+                                .bindPopup(document.getElementById('mapModalLabel').textContent.replace('Vị trí: ', '')).openPopup();
+                        }
+                        leafletMap.setView(currentTargetLocation, 15);
+                        leafletMap.invalidateSize();
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            } else {
+                document.getElementById('routeInfo').textContent = 'Trình duyệt của bạn không hỗ trợ Geolocation.';
+                // Vẫn hiển thị địa điểm đích
+                if (!leafletMarker) { // Chỉ thêm lại nếu chưa có
+                    leafletMarker = L.marker(currentTargetLocation).addTo(leafletMap)
+                        .bindPopup(document.getElementById('mapModalLabel').textContent.replace('Vị trí: ', '')).openPopup();
+                }
+                leafletMap.setView(currentTargetLocation, 15);
+                leafletMap.invalidateSize();
+            }
+        });
+    </script>
 }
