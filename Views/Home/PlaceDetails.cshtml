@@ -126,15 +126,15 @@
                     <form asp-action="AddReview" method="post">
                         <input type="hidden" name="LocationId" value="@Model.Id" />
                         <div class="mb-3">
-                            <label for="Rating" class="form-label">Đánh giá sao:</label>
-                            <select class="form-select" id="Rating" name="Rating" required>
-                                <option value="">-- Chọn số sao --</option>
-                                <option value="1">1 Sao</option>
-                                <option value="2">2 Sao</option>
-                                <option value="3">3 Sao</option>
-                                <option value="4">4 Sao</option>
-                                <option value="5">5 Sao</option>
-                            </select>
+                            <label class="form-label">Đánh giá sao:</label>
+                            <div id="starRating" class="star-rating d-inline-block">
+                                <i class="far fa-star" data-rating="1"></i>
+                                <i class="far fa-star" data-rating="2"></i>
+                                <i class="far fa-star" data-rating="3"></i>
+                                <i class="far fa-star" data-rating="4"></i>
+                                <i class="far fa-star" data-rating="5"></i>
+                            </div>
+                            <input type="hidden" id="Rating" name="Rating" value="" required />
                             <span class="text-danger" id="ratingValidationMessage"></span>
                         </div>
                         <div class="mb-3">
@@ -167,60 +167,106 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // JavaScript cho việc tự động biến mất thông báo
+            // JavaScript cho việc tự động biến mất thông báo (giữ nguyên)
             const successAlert = document.getElementById('successAlert');
             const errorAlert = document.getElementById('errorAlert');
 
-            // Hàm để ẩn alert sau một thời gian
-            function hideAlert(alertElement, delay = 5000) { // Mặc định 5 giây (5000ms)
+            function hideAlert(alertElement, delay = 5000) {
                 if (alertElement) {
                     setTimeout(() => {
-                        // Kiểm tra xem phần tử vẫn còn trong DOM và có lớp 'show' không
-                        // 'show' có thể đã bị xóa bởi người dùng nhấn nút đóng (nếu có)
                         if (alertElement && alertElement.classList.contains('show')) {
-                            // Lấy instance hoặc tạo mới nếu chưa có.
                             const bsAlert = bootstrap.Alert.getInstance(alertElement) || new bootstrap.Alert(alertElement);
-
-                            // Gọi close(). Phương thức này sẽ tự động kích hoạt hiệu ứng fade-out
-                            // và sau đó loại bỏ phần tử khỏi DOM, giải phóng không gian.
                             bsAlert.close();
                         } else if (alertElement) {
-                            // Fallback: nếu alert không còn lớp 'show' (có thể đã bị đóng),
-                            // đảm bảo nó bị ẩn đi để không chiếm không gian.
                             alertElement.style.display = 'none';
                         }
                     }, delay);
                 }
             }
 
-            // Gọi hàm cho alert thành công
-            // Nếu bạn muốn nó tự biến mất sau 5s VÀ vẫn có nút X để đóng thủ công,
-            // thì giữ nguyên cả phần HTML alert-dismissible và JavaScript này.
             if (successAlert) {
-                hideAlert(successAlert, 5000); // Ẩn sau 5 giây
+                hideAlert(successAlert, 5000);
             }
-
-            // Gọi hàm cho alert lỗi
             if (errorAlert) {
-                hideAlert(errorAlert, 7000); // Ẩn sau 7 giây
+                hideAlert(errorAlert, 7000);
             }
 
-
-            // JavaScript cho form đánh giá (giữ nguyên hoặc có thể đã được thay đổi)
-            const reviewForm = document.querySelector('form[asp-action="AddReview"]');
-            const ratingSelect = document.getElementById('Rating');
+            // =============================================================
+            // BẮT ĐẦU PHẦN JAVASCRIPT MỚI CHO ĐÁNH GIÁ SAO
+            // =============================================================
+            const starRatingContainer = document.getElementById('starRating');
+            const stars = starRatingContainer ? starRatingContainer.querySelectorAll('i') : [];
+            const hiddenRatingInput = document.getElementById('Rating'); // Input hidden
             const ratingValidationMessage = document.getElementById('ratingValidationMessage');
-            const commentValidationMessage = document.getElementById('commentValidationMessage');
+            const reviewForm = document.querySelector('form[asp-action="AddReview"]');
             const commentTextarea = document.getElementById('Comment');
+            const commentValidationMessage = document.getElementById('commentValidationMessage');
+
+            let currentRating = 0; // Biến lưu trữ số sao hiện tại đã chọn
+
+            if (starRatingContainer && stars.length > 0 && hiddenRatingInput) {
+                stars.forEach(star => {
+                    star.addEventListener('click', function () {
+                        const rating = parseInt(this.dataset.rating);
+                        currentRating = rating;
+                        hiddenRatingInput.value = rating; // Cập nhật giá trị vào input hidden
+                        updateStarDisplay(rating);
+                        ratingValidationMessage.textContent = ''; // Xóa thông báo lỗi khi chọn
+                    });
+
+                    star.addEventListener('mouseover', function () {
+                        if (currentRating === 0) { // Chỉ hover khi chưa chọn sao nào
+                            const hoverRating = parseInt(this.dataset.rating);
+                            updateStarDisplay(hoverRating, true);
+                        }
+                    });
+
+                    star.addEventListener('mouseout', function () {
+                        if (currentRating === 0) { // Chỉ bỏ hover khi chưa chọn sao nào
+                            updateStarDisplay(0); // Đặt lại về trạng thái không có sao nào được hover
+                        }
+                    });
+                });
+
+                // Hàm cập nhật trạng thái hiển thị của các ngôi sao
+                function updateStarDisplay(ratingValue, isHover = false) {
+                    stars.forEach(star => {
+                        const starNum = parseInt(star.dataset.rating);
+                        if (isHover) {
+                            if (starNum <= ratingValue) {
+                                star.classList.add('fas', 'hover'); // Đầy và có hiệu ứng hover
+                                star.classList.remove('far', 'selected');
+                            } else {
+                                star.classList.add('far'); // Rỗng
+                                star.classList.remove('fas', 'hover', 'selected');
+                            }
+                        } else {
+                            if (starNum <= ratingValue) {
+                                star.classList.add('fas', 'selected'); // Đầy và đã chọn
+                                star.classList.remove('far', 'hover');
+                            } else {
+                                star.classList.add('far'); // Rỗng
+                                star.classList.remove('fas', 'hover', 'selected');
+                            }
+                        }
+                    });
+                }
+            }
+
+            // =============================================================
+            // KẾT THÚC PHẦN JAVASCRIPT MỚI CHO ĐÁNH GIÁ SAO
+            // =============================================================
 
 
-            if (reviewForm && ratingSelect) {
+            // JavaScript cho form đánh giá (cần điều chỉnh validation)
+            if (reviewForm) {
                 reviewForm.addEventListener('submit', function (event) {
                     ratingValidationMessage.textContent = '';
                     commentValidationMessage.textContent = '';
 
                     let isValid = true;
-                    const ratingValue = ratingSelect.value;
+                    // Lấy giá trị từ input hidden thay vì select
+                    const ratingValue = hiddenRatingInput.value;
                     const commentValue = commentTextarea.value;
 
                     if (ratingValue === "" || parseInt(ratingValue) === 0) {
