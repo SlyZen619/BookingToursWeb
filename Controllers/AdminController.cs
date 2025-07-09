@@ -282,10 +282,9 @@ namespace BookingToursWeb.Controllers
             return View();
         }
 
-        // POST: Admin/AddLocation (Xử lý thêm địa điểm mới)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddLocation([Bind("Name,Description,Information,Address,TicketPrice,OpeningHours,ImageUrl,ContactInfo,IsActive")] Location location)
+        public async Task<IActionResult> AddLocation([Bind("Name,Description,Information,Address,TicketPrice,OpeningHours,ImageUrl,ContactInfo,IsActive,Latitude,Longitude")] Location location) // ĐÃ CẬP NHẬT Bind
         {
             if (!IsCurrentUserAdmin())
             {
@@ -339,7 +338,7 @@ namespace BookingToursWeb.Controllers
         // POST: Admin/EditLocation/{id} (Xử lý sửa địa điểm)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditLocation(int id, [Bind("Id,Name,Description,Information,Address,TicketPrice,OpeningHours,ImageUrl,ContactInfo,IsActive")] Location location)
+        public async Task<IActionResult> EditLocation(int id, [Bind("Id,Name,Description,Information,Address,TicketPrice,OpeningHours,ImageUrl,ContactInfo,IsActive,Latitude,Longitude")] Location location) // ĐÃ CẬP NHẬT Bind
         {
             if (!IsCurrentUserAdmin())
             {
@@ -364,7 +363,30 @@ namespace BookingToursWeb.Controllers
                         return View(location);
                     }
 
-                    _context.Update(location);
+                    // Lấy đối tượng từ DB để đảm bảo chỉ cập nhật các thuộc tính được phép bởi [Bind]
+                    // Điều này an toàn hơn so với việc truyền trực tiếp 'location' vào _context.Update()
+                    // vì nó ngăn chặn tấn công over-posting.
+                    var locationToUpdate = await _context.Locations.AsNoTracking().FirstOrDefaultAsync(l => l.Id == id);
+                    if (locationToUpdate == null)
+                    {
+                        return NotFound();
+                    }
+
+                    // Ánh xạ các giá trị từ đối tượng được bind vào đối tượng từ DB
+                    locationToUpdate.Name = location.Name;
+                    locationToUpdate.Description = location.Description;
+                    locationToUpdate.Information = location.Information;
+                    locationToUpdate.Address = location.Address;
+                    locationToUpdate.TicketPrice = location.TicketPrice;
+                    locationToUpdate.OpeningHours = location.OpeningHours;
+                    locationToUpdate.ImageUrl = location.ImageUrl;
+                    locationToUpdate.ContactInfo = location.ContactInfo;
+                    locationToUpdate.IsActive = location.IsActive;
+                    locationToUpdate.Latitude = location.Latitude; // CẬP NHẬT LATITUDE
+                    locationToUpdate.Longitude = location.Longitude; // CẬP NHẬT LONGITUDE
+
+
+                    _context.Update(locationToUpdate);
                     await _context.SaveChangesAsync();
                     TempData["SuccessMessage"] = "Cập nhật thông tin địa điểm thành công!";
                 }
@@ -378,6 +400,12 @@ namespace BookingToursWeb.Controllers
                     {
                         throw;
                     }
+                }
+                catch (Exception ex) // Bắt lỗi tổng quát hơn
+                {
+                    _logger.LogError(ex, $"Lỗi khi cập nhật địa điểm ID: {id}");
+                    ModelState.AddModelError(string.Empty, "Có lỗi xảy ra khi cập nhật địa điểm. Vui lòng thử lại.");
+                    return View(location);
                 }
                 return RedirectToAction(nameof(ManageLocations));
             }
