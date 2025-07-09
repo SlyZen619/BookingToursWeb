@@ -55,6 +55,16 @@ namespace BookingToursWeb.Models
         [Display(Name = "Hoạt động")]
         public bool IsActive { get; set; } = true;
 
+        [Column(TypeName = "decimal(9, 6)")] // decimal(9, 6) cho độ chính xác cao hơn float/double
+        [Display(Name = "Vĩ độ")]
+        [Range(-90.0, 90.0, ErrorMessage = "Vĩ độ phải nằm trong khoảng từ -90 đến 90.")]
+        public decimal? Latitude { get; set; } // Cho phép null
+
+        [Column(TypeName = "decimal(9, 6)")]
+        [Display(Name = "Kinh độ")]
+        [Range(-180.0, 180.0, ErrorMessage = "Kinh độ phải nằm trong khoảng từ -180 đến 180.")]
+        public decimal? Longitude { get; set; } // Cho phép null
+
         // --- Thuộc tính điều hướng (Navigation Properties) ---
         public ICollection<Booking> Bookings { get; set; } = new List<Booking>(); // Khởi tạo tại khai báo
         public ICollection<Review> Reviews { get; set; } = new List<Review>(); // Khởi tạo tại khai báo
