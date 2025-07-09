@@ -53,6 +53,16 @@
                 <input asp-for="ContactInfo" class="form-control" />
                 <span asp-validation-for="ContactInfo" class="text-danger"></span>
             </div>
+            <div class="mb-3">
+                <label asp-for="Latitude" class="form-label"></label>
+                <input asp-for="Latitude" class="form-control" type="number" step="any" /> @* step="any" cho phép số thập phân *@
+                <span asp-validation-for="Latitude" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Longitude" class="form-label"></label>
+                <input asp-for="Longitude" class="form-control" type="number" step="any" /> @* step="any" cho phép số thập phân *@
+                <span asp-validation-for="Longitude" class="text-danger"></span>
+            </div>
             <div class="mb-3 form-check">
                 <input class="form-check-input" asp-for="IsActive" />
                 <label class="form-check-label" asp-for="IsActive"></label>
