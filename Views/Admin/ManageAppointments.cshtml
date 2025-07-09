@@ -76,7 +76,19 @@
                             <td>@Html.DisplayFor(modelItem => item.AppointmentDate)</td>
                             <td>@Html.DisplayFor(modelItem => item.NumberOfVisitors)</td>
                             <td>@Html.DisplayFor(modelItem => item.TotalAmount)</td>
-                            <td>@Html.DisplayFor(modelItem => item.Status)</td>
+                            <td>
+                                @{
+                                    string statusText = item.Status switch
+                                    {
+                                        "Pending" => "Đang chờ duyệt",
+                                        "Confirmed" => "Đã xác nhận",
+                                        "Cancelled" => "Đã hủy",
+                                        "Completed" => "Đã hoàn thành",
+                                        _ => item.Status // Mặc định hiển thị giá trị gốc nếu không khớp
+                                    };
+                                }
+                                @statusText
+                            </td>
                             @* ĐÃ SỬA: Giới hạn chiều rộng cột "Ghi chú" *********************************************************@
                             <td class="text-truncate" style="max-width: 200px;">
                                 @(item.SpecialNotes ?? "Không có")
@@ -221,13 +233,31 @@
                         window.location.href = '/Admin/EditAppointment?id=' + eventId;
                     },
                     eventDidMount: function(info) {
+                        // Hàm trợ giúp để việt hóa trạng thái
+                        function getVietnameseStatus(status) {
+                            switch (status) {
+                                case 'Pending':
+                                    return 'Đang chờ duyệt';
+                                case 'Confirmed':
+                                    return 'Đã xác nhận';
+                                case 'Cancelled':
+                                    return 'Đã hủy';
+                                case 'Completed':
+                                    return 'Đã hoàn thành';
+                                default:
+                                    return status; // Mặc định trả về trạng thái gốc nếu không khớp
+                            }
+                        }
+
+                        var vietnameseStatus = getVietnameseStatus(info.event.extendedProps.status);
+
                         $(info.el).tooltip({
                             title: `<b>${info.event.title}</b><br>` +
                                 `Người dùng: ${info.event.extendedProps.userName}<br>` +
                                 `Địa điểm: ${info.event.extendedProps.locationName}<br>` +
                                 `Số khách: ${info.event.extendedProps.numberOfVisitors}<br>` +
                                 `Tổng tiền: ${info.event.extendedProps.totalAmount}<br>` +
-                                `Trạng thái: ${info.event.extendedProps.status}<br>` +
+                                `Trạng thái: ${vietnameseStatus}<br>` + // Đã thay đổi ở đây
                                 `Ghi chú: ${info.event.extendedProps.specialNotes || 'Không có'}<br>` +
                                 `Ngày tạo: ${info.event.extendedProps.createdAt}<br>` +
                                 `Ngày cập nhật: ${info.event.extendedProps.updatedAt}`,
