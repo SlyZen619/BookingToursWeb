@@ -1,4 +1,4 @@
-﻿@model User 
+﻿@model User
 
 @{
     ViewData["Title"] = "Sửa thông tin người dùng"; // Tiêu đề trang
@@ -35,10 +35,29 @@
                 <input asp-for="PhoneNumber" class="form-control" />
                 <span asp-validation-for="PhoneNumber" class="text-danger"></span>
             </div>
+
             <div class="form-group form-check mb-3">
                 <input class="form-check-input" asp-for="IsAdmin" />
                 <label class="form-check-label" asp-for="IsAdmin"></label>
                 <span asp-validation-for="IsAdmin" class="text-danger"></span>
+            </div>
+
+            <div class="form-group form-check mb-3">
+                <input class="form-check-input" asp-for="IsLocationManager" id="IsLocationManager" />
+                <label class="form-check-label" asp-for="IsLocationManager"></label>
+                <span asp-validation-for="IsLocationManager" class="text-danger"></span>
+            </div>
+            <div class="form-group mb-3" id="managedLocationGroup" style="@(Model.IsLocationManager ? "" : "display:none;")">
+                <label asp-for="ManagedLocationId" class="control-label">Địa điểm quản lý</label>
+                <select asp-for="ManagedLocationId" class="form-control"
+                        asp-items="@(new SelectList(ViewBag.AvailableLocations, "Value", "Text", Model.ManagedLocationId))">
+                    {{-- Không cần thêm option "-- Chọn người quản lý (tùy chọn) --" ở đây nữa vì đã thêm ở Controller rồi --}}
+                </select>
+                <span asp-validation-for="ManagedLocationId" class="text-danger"></span>
+                @if (ViewData.ModelState.TryGetValue("ManagedLocationId", out var modelStateEntry) && modelStateEntry != null && modelStateEntry.Errors.Any())
+                {
+                    <span class="text-danger">@modelStateEntry.Errors.First().ErrorMessage</span>
+                }
             </div>
             <div class="form-group mb-3">
                 <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
@@ -53,4 +72,28 @@
         // Đảm bảo các script validation client-side được load
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var isLocationManagerCheckbox = document.getElementById('IsLocationManager');
+            var managedLocationGroup = document.getElementById('managedLocationGroup');
+
+            function toggleManagedLocation() {
+                if (isLocationManagerCheckbox.checked) {
+                    managedLocationGroup.style.display = 'block';
+                } else {
+                    managedLocationGroup.style.display = 'none';
+                    // Tùy chọn: Đặt giá trị dropdown về null khi ẩn
+                    // Nếu bạn làm điều này, hãy đảm bảo Controller xử lý trường hợp ManagedLocationId = null khi IsLocationManager = false
+                    // document.getElementById('ManagedLocationId').value = '';
+                }
+            }
+
+            // Gọi hàm khi trang tải xong
+            toggleManagedLocation();
+
+            // Gọi hàm khi checkbox thay đổi trạng thái
+            isLocationManagerCheckbox.addEventListener('change', toggleManagedLocation);
+        });
+    </script>
 }

@@ -6,15 +6,7 @@
 }
 
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Sửa thông tin Lịch hẹn</h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a asp-action="ManageAppointments">Quản lý Lịch hẹn</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Sửa Lịch hẹn</li>
-            </ol>
-        </nav>
-    </div>
+    <h1 class="h2">@ViewData["Title"]</h1>
 </div>
 
 <div class="row">
@@ -22,39 +14,37 @@
         <form asp-action="EditAppointment" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
-            @* Giữ lại CreatedAt để không bị mất khi POST. Vì nó non-nullable, cần đảm bảo có giá trị. *@
             <input type="hidden" asp-for="CreatedAt" />
 
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
+            <div class="form-group mb-3">
                 <label asp-for="UserId" class="control-label"></label>
                 <select asp-for="UserId" class="form-control" asp-items="@(new SelectList(ViewBag.Users, "Id", "Username", Model.UserId))">
                 </select>
                 <span asp-validation-for="UserId" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div class="form-group mb-3">
                 <label asp-for="LocationId" class="control-label"></label>
                 <select asp-for="LocationId" class="form-control" asp-items="@(new SelectList(ViewBag.Locations, "Id", "Name", Model.LocationId))">
                 </select>
                 <span asp-validation-for="LocationId" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div class="form-group mb-3">
                 <label asp-for="AppointmentDate" class="control-label"></label>
-                @* THAY ĐỔI: Thêm id để dễ dàng thao tác bằng JavaScript *@
                 <input asp-for="AppointmentDate" type="datetime-local" class="form-control" id="EditAppointmentDateInput" />
                 <span asp-validation-for="AppointmentDate" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div class="form-group mb-3">
                 <label asp-for="NumberOfVisitors" class="control-label"></label>
                 <input asp-for="NumberOfVisitors" class="form-control" />
                 <span asp-validation-for="NumberOfVisitors" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div class="form-group mb-3">
                 <label asp-for="TotalAmount" class="control-label"></label>
-                <input asp-for="TotalAmount" class="form-control" readonly />
+                <input asp-for="TotalAmount" class="form-control" readonly value="@(Model.TotalAmount == 0 ? "0.00" : Model.TotalAmount.ToString("F2"))" />
                 <span asp-validation-for="TotalAmount" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div class="form-group mb-3">
                 <label asp-for="Status" class="control-label"></label>
                 <select asp-for="Status" class="form-control">
                     <option value="Pending">Đang chờ duyệt</option>
@@ -64,20 +54,39 @@
                 </select>
                 <span asp-validation-for="Status" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div class="form-group mb-3">
                 <label asp-for="SpecialNotes" class="control-label"></label>
                 <textarea asp-for="SpecialNotes" class="form-control"></textarea>
                 <span asp-validation-for="SpecialNotes" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <input type="submit" value="Lưu thay đổi" class="btn btn-primary" />
-                <a asp-action="ManageAppointments" class="btn btn-secondary">Hủy</a>
+
+            <div class="d-flex justify-content-start align-items-center mt-4">
+                <button type="submit" class="btn btn-primary me-2">Lưu thay đổi</button>
+                <a asp-action="ManageAppointments" class="btn btn-secondary me-2">Hủy</a>
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteConfirmationModal">Xóa lịch hẹn</button>
             </div>
         </form>
-        <form asp-action="DeleteAppointment" asp-route-id="@Model.Id" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa lịch hẹn này không?');">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-danger">Xóa lịch hẹn</button>
-        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-labelledby="deleteConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmationModalLabel">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Bạn có chắc chắn muốn xóa lịch hẹn này không?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <form asp-action="DeleteAppointment" asp-route-id="@Model.Id" method="post" style="display:inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">Xóa</button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -126,11 +135,12 @@
                         url: '/api/locations/' + locationId,
                         type: 'GET',
                         success: function(location) {
-                            if (location && location.ticketPrice !== undefined) {
-                                var totalAmount = numberOfVisitors * parseFloat(location.ticketPrice);
+                            var ticketPrice = parseFloat(location.ticketPrice);
+                            if (location && !isNaN(ticketPrice)) {
+                                var totalAmount = numberOfVisitors * ticketPrice;
                                 $('#TotalAmount').val(totalAmount.toFixed(2));
                             } else {
-                                $('#TotalAmount').val('0.00');
+                                $('#TotalAmount').val('0.00'); // Nếu miễn phí hoặc không có giá vé
                             }
                         },
                         error: function(xhr, status, error) {

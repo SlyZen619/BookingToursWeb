@@ -4,101 +4,108 @@
     Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml"; // Đảm bảo đúng layout admin của bạn
 }
 
-<div class="container-fluid">
-    <h1 class="mt-4">Quản Lý Danh Mục Bài Đăng</h1>
-    <p>Đây là trang quản lý các danh mục cho bài đăng trên website.</p>
+<div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">@ViewData["Title"]</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a asp-action="AddCategory" class="btn btn-primary me-2">
+            <span data-feather="plus-circle"></span>
+        </a>
+        <a asp-action="ManagePosts" asp-controller="Admin" class="btn btn-secondary">
+            <span data-feather="file-text"></span> Quản lý Bài đăng
+        </a>
+    </div>
+</div>
 
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            @TempData["SuccessMessage"]
-        </div>
-    }
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            @TempData["ErrorMessage"]
-        </div>
-    }
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
-    <p>
-        <a asp-action="AddCategory" class="btn btn-primary">Thêm Danh Mục Mới</a>
-    </p>
-
-    <div class="table-responsive">
-        <table class="table table-striped table-bordered mt-3">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>@Html.DisplayNameFor(model => model.Name)</th>
-                    <th>Hành Động</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (Model != null && Model.Any())
-                {
-                    @foreach (var category in Model)
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Danh sách Danh mục Bài đăng</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>@Html.DisplayNameFor(model => model.Name)</th>
+                        <th>Hành Động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        @foreach (var category in Model)
+                        {
+                            <tr>
+                                <td>@category.Name</td>
+                                <td>
+                                    <a asp-action="EditCategory" asp-route-id="@category.Id" class="btn btn-info btn-sm">Sửa</a>
+                                    <form asp-action="DeleteCategory" asp-route-id="@category.Id" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa danh mục này?');">
+                                        <button type="submit" class="btn btn-danger btn-sm">Xóa</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
                     {
                         <tr>
-                            <td>@category.Id</td>
-                            <td>@category.Name</td>
-                            <td>
-                                <a asp-action="EditCategory" asp-route-id="@category.Id" class="btn btn-warning btn-sm me-2">Sửa</a>
-                                <form asp-action="DeleteCategory" asp-route-id="@category.Id" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa danh mục này?');">
-                                    <button type="submit" class="btn btn-danger btn-sm">Xóa</button>
-                                </form>
-                                @* Nút "Quản lý bài đăng" sẽ được thêm ở bước tiếp theo *@
-                                @* <a asp-action="ListPostsByCategory" asp-route-categoryId="@category.Id" class="btn btn-info btn-sm ms-2">Quản lý bài đăng</a> *@
-                            </td>
+                            <td colspan="3">Chưa có danh mục nào được tạo.</td>
                         </tr>
                     }
-                }
-                else
-                {
-                    <tr>
-                        <td colspan="3">Chưa có danh mục nào được tạo.</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 @section Scripts {
     <script>
-        // Script để tự động ẩn các alert sau một thời gian
         document.addEventListener('DOMContentLoaded', function () {
-            // Chúng ta không cần lấy alert bằng ID nếu đã dùng querySelector chung
-            // const successAlert = document.getElementById('successAlert');
-            // const errorAlert = document.getElementById('errorAlert');
-
             function hideAlert(alertElement, delay = 5000) {
                 if (alertElement) {
                     setTimeout(() => {
-                        // Kiểm tra xem alert có class 'show' để đảm bảo nó đang hiển thị
                         if (alertElement && alertElement.classList.contains('show')) {
-                            // Cách 1: Kích hoạt sự kiện click trên nút đóng (phổ biến và đáng tin cậy)
                             const closeButton = alertElement.querySelector('.btn-close');
                             if (closeButton) {
-                                closeButton.click(); // Kích hoạt click vào nút đóng
+                                closeButton.click();
                             } else {
-                                // Fallback nếu không tìm thấy nút đóng (ít khi xảy ra với markup chuẩn Bootstrap)
-                                // Thêm class 'fade' và 'show' trước khi remove để đảm bảo hiệu ứng
                                 alertElement.classList.remove('show');
-                                alertElement.classList.add('fade'); // Đảm bảo hiệu ứng fade out
+                                alertElement.classList.add('fade');
                                 setTimeout(() => {
-                                    alertElement.remove(); // Loại bỏ phần tử khỏi DOM sau khi fade
-                                }, 200); // Thời gian cho hiệu ứng fade kết thúc
+                                    alertElement.remove();
+                                }, 200);
                             }
                         }
                     }, delay);
                 }
             }
 
-            // Gợi hàm cho alert thành công (5 giây)
             hideAlert(document.querySelector('.alert-success'), 5000);
-            // Gợi hàm cho alert lỗi (7 giây)
             hideAlert(document.querySelector('.alert-danger'), 7000);
+
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+        });
+
+        $(document).ready(function() {
+            // Khởi tạo DataTables nếu cần
+            // $('#dataTable').DataTable();
+            // Đảm bảo bạn đã nhúng các thư viện JS của DataTables trong _AdminLayout.cshtml hoặc ở đây.
         });
     </script>
 }

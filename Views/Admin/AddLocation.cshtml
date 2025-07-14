@@ -10,7 +10,9 @@
 <hr />
 <div class="row">
     <div class="col-md-8">
-        <form asp-action="AddLocation">
+        <form asp-action="AddLocation" method="post">
+            @* THÊM method="post" *@
+            @Html.AntiForgeryToken() @* Rất quan trọng cho form POST, ngăn CSRF *@
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="mb-3">
                 <label asp-for="Name" class="form-label"></label>
@@ -24,7 +26,7 @@
             </div>
             <div class="mb-3">
                 <label asp-for="Information" class="form-label"></label>
-                <textarea asp-for="Information" class="form-control" rows="10"></textarea> 
+                <textarea asp-for="Information" class="form-control" rows="10"></textarea>
                 <span asp-validation-for="Information" class="text-danger"></span>
             </div>
             <div class="mb-3">
@@ -65,6 +67,39 @@
             <div class="mb-3 form-check">
                 <input class="form-check-input" asp-for="IsActive" />
                 <label class="form-check-label" asp-for="IsActive"></label>
+            </div>
+
+            <h4 class="mt-4">Thông tin Thanh toán</h4>
+            <div class="mb-3">
+                <label asp-for="BankName" class="form-label"></label>
+                <input asp-for="BankName" class="form-control" />
+                <span asp-validation-for="BankName" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="BankAccountNumber" class="form-label"></label>
+                <input asp-for="BankAccountNumber" class="form-control" />
+                <span asp-validation-for="BankAccountNumber" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="BankAccountName" class="form-label"></label>
+                <input asp-for="BankAccountName" class="form-control" />
+                <span asp-validation-for="BankAccountName" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="PaymentInstructions" class="form-label"></label>
+                <textarea asp-for="PaymentInstructions" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="PaymentInstructions" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label for="ManagerUserId" class="form-label">Người quản lý</label>
+                <select name="ManagerUserId" id="ManagerUserId" class="form-control" asp-items="@ViewBag.PotentialManagers">
+                </select>
+                @* Hiển thị lỗi từ Controller nếu có *@
+                @if (ViewData.ModelState.TryGetValue("ManagerUserId", out var modelStateEntry) && modelStateEntry != null && modelStateEntry.Errors.Any())
+                {
+                    <span class="text-danger">@modelStateEntry.Errors.First().ErrorMessage</span>
+                }
             </div>
             <div class="mb-3">
                 <input type="submit" value="Thêm mới" class="btn btn-primary" />

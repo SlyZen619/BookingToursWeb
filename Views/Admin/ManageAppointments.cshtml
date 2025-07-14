@@ -19,23 +19,17 @@
     </div>
 }
 
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Quản lý Lịch hẹn</h1>
+<div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">@ViewData["Title"]</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a asp-action="Index">Admin Dashboard</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Quản lý Lịch hẹn</li>
-            </ol>
-        </nav>
+        <a asp-action="AddAppointment" class="btn btn-primary">
+            <span data-feather="plus-circle"></span>
+        </a>
     </div>
 </div>
 
 <p>Đây là trang quản lý các lịch hẹn. Bạn có thể xem và quản lý lịch hẹn trên lịch bên dưới.</p>
 
-<div class="mb-3">
-    <a asp-action="AddAppointment" class="btn btn-primary">Thêm lịch hẹn mới</a>
-</div>
 
 <div id="calendar" style="margin-top: 20px;"></div>
 
@@ -55,7 +49,6 @@
                     <tr>
                         <th>ID</th>
                         <th>Người dùng</th>
-                        @* Bỏ cột Địa điểm ở đây vì mỗi bảng đã được nhóm theo địa điểm *@
                         <th>Ngày hẹn</th>
                         <th>Số khách</th>
                         <th>Tổng tiền</th>
@@ -72,10 +65,23 @@
                         <tr>
                             <td>@Html.DisplayFor(modelItem => item.Id)</td>
                             <td>@(item.User?.Username ?? "N/A")</td>
-                            @* Bỏ cột Địa điểm ở đây *@
                             <td>@Html.DisplayFor(modelItem => item.AppointmentDate)</td>
                             <td>@Html.DisplayFor(modelItem => item.NumberOfVisitors)</td>
-                            <td>@Html.DisplayFor(modelItem => item.TotalAmount)</td>
+                            <td>
+                                @{
+                                    // Sửa đổi phần này để hiển thị "Miễn phí" nếu TotalAmount là 0
+                                    // Trong Booking, TotalAmount là decimal, không phải decimal? nên không dùng HasValue.
+                                    // Thay vào đó, kiểm tra trực tiếp giá trị của TotalAmount.
+                                    if (item.TotalAmount == 0)
+                                    {
+                                        <span>Miễn phí</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@item.TotalAmount.ToString("N0") VNĐ</span>
+                                    }
+                                }
+                            </td>
                             <td>
                                 @{
                                     string statusText = item.Status switch
@@ -89,11 +95,9 @@
                                 }
                                 @statusText
                             </td>
-                            @* ĐÃ SỬA: Giới hạn chiều rộng cột "Ghi chú" *********************************************************@
                             <td class="text-truncate" style="max-width: 200px;">
                                 @(item.SpecialNotes ?? "Không có")
                             </td>
-                            @* ĐÃ SỬA: Định dạng lại thời gian hiển thị về múi giờ địa phương *********************************@
                             <td>@item.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                             <td>@item.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                             <td>
@@ -220,7 +224,9 @@
                     selectAllow: function(selectInfo) {
                         const startDate = new Date(selectInfo.startStr);
                         startDate.setHours(0, 0, 0, 0); // Chuẩn hóa về đầu ngày
-                        return startDate >= today; // Chỉ cho phép chọn ngày hiện tại hoặc tương lai
+                        const todayDate = new Date();
+                        todayDate.setHours(0, 0, 0, 0); // Chuẩn hóa ngày hôm nay
+                        return startDate >= todayDate; // Chỉ cho phép chọn ngày hiện tại hoặc tương lai
                     },
                     select: function(info) {
                         // Nếu selectAllow đã trả về false, hàm này sẽ không được gọi.
@@ -257,7 +263,7 @@
                                 `Địa điểm: ${info.event.extendedProps.locationName}<br>` +
                                 `Số khách: ${info.event.extendedProps.numberOfVisitors}<br>` +
                                 `Tổng tiền: ${info.event.extendedProps.totalAmount}<br>` +
-                                `Trạng thái: ${vietnameseStatus}<br>` + // Đã thay đổi ở đây
+                                `Trạng thái: ${vietnameseStatus}<br>` +
                                 `Ghi chú: ${info.event.extendedProps.specialNotes || 'Không có'}<br>` +
                                 `Ngày tạo: ${info.event.extendedProps.createdAt}<br>` +
                                 `Ngày cập nhật: ${info.event.extendedProps.updatedAt}`,

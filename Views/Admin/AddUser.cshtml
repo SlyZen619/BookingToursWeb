@@ -45,8 +45,14 @@
             <div class="form-group form-check mb-3">
                 <input class="form-check-input" asp-for="IsAdmin" />
                 <label class="form-check-label" asp-for="IsAdmin"></label>
+                <span asp-validation-for="IsAdmin" class="text-danger"></span>
             </div>
 
+            <div class="form-group form-check mb-3">
+                <input class="form-check-input" asp-for="IsLocationManager" />
+                <label class="form-check-label" asp-for="IsLocationManager"></label>
+                <span asp-validation-for="IsLocationManager" class="text-danger"></span>
+            </div>
             <div class="d-grid gap-2">
                 <button type="submit" class="btn btn-primary">Thêm người dùng</button>
             </div>

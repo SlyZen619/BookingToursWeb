@@ -129,12 +129,17 @@
                         url: '/api/locations/' + locationId,
                         type: 'GET',
                         success: function(location) {
-                            if (location && location.ticketPrice !== undefined) {
-                                var totalAmount = numberOfVisitors * parseFloat(location.ticketPrice);
-                                $('#TotalAmount').val(totalAmount.toFixed(2));
-                            } else {
-                                $('#TotalAmount').val('0.00');
-                            }
+                                if (location && location.ticketPrice !== undefined && location.ticketPrice !== null) {
+                                    var ticketPrice = parseFloat(location.ticketPrice);
+                                    if (!isNaN(ticketPrice)) {
+                                        var totalAmount = numberOfVisitors * ticketPrice;
+                                        $('#TotalAmount').val(totalAmount.toFixed(2));
+                                    } else {
+                                        $('#TotalAmount').val('0.00');
+                                    }
+                                } else {
+                                    $('#TotalAmount').val('0.00');
+                                }
                         },
                         error: function(xhr, status, error) {
                             $('#TotalAmount').val('0.00');

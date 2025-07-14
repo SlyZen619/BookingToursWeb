@@ -2,17 +2,18 @@
 
 @{
     ViewData["Title"] = "Quản lý Địa điểm";
-    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml"; // Giữ nguyên layout bạn đã chỉ định
+    Layout = "~/Views/Shared/Admin/_AdminLayout.cshtml";
 }
 
 <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">@ViewData["Title"]</h1> 
+    <h1 class="h2">@ViewData["Title"]</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        <a asp-action="AddLocation" class="btn btn-primary">Thêm Địa điểm mới</a>
+        <a asp-action="AddLocation" class="btn btn-primary">
+            <span data-feather="plus-circle"></span>
+        </a>
     </div>
 </div>
 
-@* Hiển thị thông báo thành công hoặc lỗi từ TempData *@
 @if (TempData["SuccessMessage"] != null)
 {
     <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -37,7 +38,6 @@
             <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>@Html.DisplayNameFor(model => model.Name)</th>
                         <th>@Html.DisplayNameFor(model => model.Address)</th>
                         <th>@Html.DisplayNameFor(model => model.TicketPrice)</th>
@@ -50,7 +50,6 @@
                     @foreach (var item in Model)
                     {
                         <tr>
-                            <td>@item.Id</td>
                             <td>@item.Name</td>
                             <td>@item.Address</td>
                             <td>@(item.TicketPrice.HasValue? item.TicketPrice.Value.ToString("N0") + " VNĐ" : "Miễn phí")</td>
