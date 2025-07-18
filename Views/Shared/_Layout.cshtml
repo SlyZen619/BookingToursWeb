@@ -95,12 +95,14 @@
                 color: #007bff; /* Màu chữ khi hover */
             }
 
-        .btn-admin-nav-dropdown {
-            color: #007bff; /* Màu chữ xanh cho nút admin trong dropdown */
+        .btn-admin-nav-dropdown, /* Áp dụng style chung cho các nút panel */
+        .btn-location-manager-nav-dropdown {
+            color: #007bff; /* Màu chữ xanh cho nút admin/manager trong dropdown */
             font-weight: bold;
         }
 
-            .btn-admin-nav-dropdown:hover {
+            .btn-admin-nav-dropdown:hover,
+            .btn-location-manager-nav-dropdown:hover {
                 background-color: #e6f2ff; /* Nền xanh nhạt khi hover */
             }
 
@@ -119,7 +121,6 @@
 </head>
 <body>
     <div id="root-container">
-        @* THÊM CONTAINER MỚI Ở ĐÂY *@
         <header>
             <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-custom border-bottom box-shadow mb-3">
                 <div class="container-fluid">
@@ -134,7 +135,6 @@
                                 <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Booking">Đặt lịch</a>
                             </li>
                             <li class="nav-item dropdown">
-                                @* Thêm class "dropdown" *@
                                 <a class="nav-link dropdown-toggle" href="#" id="postsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     Bài viết
                                 </a>
@@ -148,25 +148,34 @@
                             @if (Context.Session.GetInt32("UserId") != null)
                             {
                                 <li class="nav-item dropdown">
-                                    @* Thêm class "dropdown" *@
                                     <a class="nav-link dropdown-toggle text-light" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Xin chào, @Context.Session.GetString("Username")! @* Hiển thị tên người dùng đã đăng nhập *@
                                     </a>
                                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                         <li>
-                                            @* NÚT PROFILE CỦA TÔI (Sẽ chứa lịch đã đặt bên trong) *@
                                             <a class="dropdown-item" asp-controller="Home" asp-action="Profile">Profile của tôi</a>
                                         </li>
                                         <li><hr class="dropdown-divider"></li> @* Đường phân cách *@
-                                        @* Thêm dropdown-menu-end để menu xổ ra bên phải *@
+
                                         @* Nút Admin Panel - chỉ hiển thị nếu là Admin *@
                                         @if (Context.Session.GetString("IsAdmin") == "True")
                                         {
                                             <li>
                                                 <a class="dropdown-item btn-admin-nav-dropdown" asp-area="" asp-controller="Admin" asp-action="Index">Admin Panel</a>
                                             </li>
+                                            <li><hr class="dropdown-divider"></li>
+         @* Đường phân cách *@
                                         }
-                                        <li><hr class="dropdown-divider"></li> @* Đường phân cách *@
+                                        @* Nút Location Manager Panel - chỉ hiển thị nếu là LocationManager VÀ KHÔNG PHẢI ADMIN *@
+                                        @if (Context.Session.GetString("IsLocationManager") == "True" && Context.Session.GetString("IsAdmin") != "True")
+                                        {
+                                            <li>
+                                                <a class="dropdown-item btn-location-manager-nav-dropdown" asp-area="" asp-controller="LocationManager" asp-action="Index">Giao diện quản lý địa điểm</a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+         @* Đường phân cách *@
+                                        }
+
                                         <li>
                                             <a class="dropdown-item" asp-controller="Account" asp-action="Logout">Đăng xuất</a>
                                         </li>
@@ -189,22 +198,19 @@
             </nav>
         </header>
         <div class="container">
-            @* Cần giữ div.container này để căn giữa nội dung *@
             <main role="main" class="pb-3">
                 @RenderBody()
             </main>
         </div>
 
-        @* Không cần partial name ở đây vì footer sẽ được render trực tiếp bên ngoài main.container để dễ kiểm soát với sticky footer *@
         <partial name="_FooterPartial" />
-    </div> @* ĐÓNG CONTAINER MỚI Ở ĐÂY *@
+    </div>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
 
     @await RenderSectionAsync("Scripts", required: false)

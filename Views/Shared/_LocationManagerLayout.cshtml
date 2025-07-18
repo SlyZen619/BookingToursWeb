@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Admin Dashboard</title>
+    <title>@ViewData["Title"] - Giao diện Quản lý Địa điểm</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 
@@ -270,13 +270,13 @@
 </head>
 <body>
     <header class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top p-0 shadow">
-        <a class="navbar-brand me-0 px-3 fs-6 text-white" asp-area="" asp-controller="Admin" asp-action="Index">Admin Panel</a>
+        <a class="navbar-brand me-0 px-3 fs-6 text-white" asp-area="" asp-controller="LocationManager" asp-action="Index">Quản lý Địa điểm của tôi</a>
 
         <div class="navbar-nav ms-auto">
             <ul class="navbar-nav px-3">
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle text-white" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        Xin chào, Admin!
+                        <span>Xin chào, Quản lý Địa điểm @Context.Session.GetString("Username")!</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                         <li><a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Index">Quay về Trang chủ</a></li>
@@ -303,44 +303,33 @@
                 </h6>
                 <ul class="nav flex-column mb-2">
                     <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Index" ? "active" : "")" aria-current="page" asp-area="" asp-controller="Admin" asp-action="Index">
+                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Index" ? "active" : "")" aria-current="page" asp-area="" asp-controller="LocationManager" asp-action="Index">
                             <span data-feather="home" class="align-text-bottom"></span>
                             Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManageLocations" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManageLocations">
+                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManageLocations" || ViewContext.RouteData.Values["Action"]?.ToString() == "AddLocation" || ViewContext.RouteData.Values["Action"]?.ToString() == "EditLocation" ? "active" : "")" asp-area="" asp-controller="LocationManager" asp-action="ManageLocations">
                             <span data-feather="map-pin" class="align-text-bottom"></span>
                             Quản lý Địa điểm
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManagePanoramas" || ViewContext.RouteData.Values["Action"]?.ToString() == "ListPanoramaPoints" || ViewContext.RouteData.Values["Action"]?.ToString() == "AddPanoramaPoint" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManagePanoramas">
+                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManagePanoramas" || ViewContext.RouteData.Values["Action"]?.ToString() == "ListPanoramaPoints" || ViewContext.RouteData.Values["Action"]?.ToString() == "AddPanoramaPoint" ? "active" : "")" asp-area="" asp-controller="LocationManager" asp-action="ManagePanoramas">
                             <span data-feather="image" class="align-text-bottom"></span>
                             Quản lý Panorama
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManageAppointments" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManageAppointments">
+                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManageAppointments" ? "active" : "")" asp-area="" asp-controller="LocationManager" asp-action="ManageAppointments">
                             <span data-feather="calendar" class="align-text-bottom"></span>
                             Quản lý Lịch hẹn
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManagePosts" || ViewContext.RouteData.Values["Action"]?.ToString() == "AddPost" || ViewContext.RouteData.Values["Action"]?.ToString() == "EditPost" || ViewContext.RouteData.Values["Action"]?.ToString() == "ManageCategories" || ViewContext.RouteData.Values["Action"]?.ToString() == "AddCategory" || ViewContext.RouteData.Values["Action"]?.ToString() == "EditCategory" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManagePosts">
-                            <span data-feather="file-text" class="align-text-bottom"></span> Quản lý Bài đăng
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManageReviews" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManageReviews">
+                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManageReviews" ? "active" : "")" asp-area="" asp-controller="LocationManager" asp-action="ManageReviews">
                             <span data-feather="star" class="align-text-bottom"></span>
                             Quản lý Đánh giá
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "ManageUsers" ? "active" : "")" asp-area="" asp-controller="Admin" asp-action="ManageUsers">
-                            <span data-feather="users" class="align-text-bottom"></span>
-                            Quản lý Tài khoản người dùng
                         </a>
                     </li>
                 </ul>
