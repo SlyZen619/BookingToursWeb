@@ -34,6 +34,24 @@ namespace BookingToursWeb.Controllers
             // Kiểm tra session để xác định quyền Admin
             return HttpContext.Session.GetString("IsAdmin") == "True";
         }
+        // Helper method MỚI để kiểm tra quyền LocationManager
+        private bool IsCurrentUserLocationManager()
+        {
+            // Kiểm tra session để xác định quyền LocationManager
+            return HttpContext.Session.GetString("IsLocationManager") == "True";
+        }
+
+        // Helper method MỚI để lấy ManagedLocationId của LocationManager hiện tại
+        private int? GetCurrentManagedLocationId()
+        {
+            // Lấy ManagedLocationId từ Session
+            var managedLocationIdString = HttpContext.Session.GetString("ManagedLocationId");
+            if (int.TryParse(managedLocationIdString, out int locationId))
+            {
+                return locationId;
+            }
+            return null; // Trả về null nếu không tìm thấy hoặc không parse được
+        }
 
         // GET: Admin/Index
         public IActionResult Index()
@@ -54,13 +72,15 @@ namespace BookingToursWeb.Controllers
         // GET: Admin/ManageUsers
         public async Task<IActionResult> ManageUsers()
         {
+            // Chỉ Admin tổng mới được xem và quản lý tất cả người dùng
             if (!IsCurrentUserAdmin())
             {
                 TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang quản lý người dùng.";
                 return RedirectToAction("Index", "Home");
             }
             ViewData["Title"] = "Quản lý Tài khoản người dùng";
-            var users = await _context.Users.ToListAsync();
+            // Eager load ManagedLocation để hiển thị tên địa điểm nếu cần
+            var users = await _context.Users.Include(u => u.ManagedLocation).ToListAsync();
             return View(users);
         }
 
@@ -74,6 +94,7 @@ namespace BookingToursWeb.Controllers
                 return RedirectToAction("Index", "Home");
             }
             ViewData["Title"] = "Thêm người dùng mới";
+            // Không cần truyền danh sách Locations ở đây vì ManagedLocationId được gán khi Edit
             return View();
         }
 
@@ -104,6 +125,14 @@ namespace BookingToursWeb.Controllers
                     return View(model);
                 }
 
+                // Kiểm tra trường hợp không hợp lệ: IsAdmin = true VÀ IsLocationManager = true
+                if (model.IsAdmin && model.IsLocationManager)
+                {
+                    ModelState.AddModelError(string.Empty, "Không thể vừa là Admin vừa là Quản lý Địa điểm.");
+                    ViewData["Title"] = "Thêm người dùng mới";
+                    return View(model);
+                }
+
                 string hashedPassword = BCrypt.Net.BCrypt.HashPassword(model.Password);
 
                 var newUser = new User
@@ -112,7 +141,9 @@ namespace BookingToursWeb.Controllers
                     Email = model.Email,
                     PhoneNumber = model.PhoneNumber,
                     PasswordHash = hashedPassword,
-                    IsAdmin = model.IsAdmin
+                    IsAdmin = model.IsAdmin,
+                    IsLocationManager = model.IsLocationManager, // GÁN GIÁ TRỊ MỚI
+                    ManagedLocationId = null // Mặc định là null khi tạo mới, sẽ gán sau khi edit
                 };
 
                 _context.Users.Add(newUser);
@@ -143,20 +174,37 @@ namespace BookingToursWeb.Controllers
                 return NotFound();
             }
 
-            var user = await _context.Users.FindAsync(id);
+            // Lấy User và Include ManagedLocation để hiển thị thông tin hiện tại
+            var user = await _context.Users.Include(u => u.ManagedLocation).FirstOrDefaultAsync(u => u.Id == id);
 
             if (user == null)
             {
                 return NotFound();
             }
 
+            // Lấy danh sách Locations để đổ vào DropDownList cho ManagedLocationId
+            // Chỉ lấy những locations chưa có manager hoặc đang được quản lý bởi user này
+            var availableLocations = await _context.Locations
+                                        .Select(l => new SelectListItem
+                                        {
+                                            Value = l.Id.ToString(),
+                                            Text = l.Name
+                                        })
+                                        .ToListAsync();
+
+            // Thêm một mục "Không quản lý địa điểm nào"
+            availableLocations.Insert(0, new SelectListItem { Value = "", Text = "-- Không quản lý địa điểm nào --" });
+
+            ViewBag.AvailableLocations = availableLocations;
+
+            // Chuyển User trực tiếp sang View để edit, View sẽ ánh xạ các thuộc tính
             return View(user);
         }
 
         // POST: Admin/EditUser/{id}
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditUser(int id, [Bind("Id,Username,Email,PhoneNumber,IsAdmin")] User user)
+        public async Task<IActionResult> EditUser(int id, [Bind("Id,Username,Email,PhoneNumber,IsAdmin,IsLocationManager,ManagedLocationId")] User user)
         {
             if (!IsCurrentUserAdmin())
             {
@@ -172,8 +220,27 @@ namespace BookingToursWeb.Controllers
                 return NotFound();
             }
 
+            // Tải lại danh sách Locations cho DropDownList trong trường hợp ModelState không hợp lệ
+            var availableLocations = await _context.Locations
+                                    .Select(l => new SelectListItem
+                                    {
+                                        Value = l.Id.ToString(),
+                                        Text = l.Name
+                                    })
+                                    .ToListAsync();
+            availableLocations.Insert(0, new SelectListItem { Value = "", Text = "-- Không quản lý địa điểm nào --" });
+            ViewBag.AvailableLocations = availableLocations;
+
+
             if (ModelState.IsValid)
             {
+                // Kiểm tra trường hợp không hợp lệ: IsAdmin = true VÀ IsLocationManager = true
+                if (user.IsAdmin && user.IsLocationManager)
+                {
+                    ModelState.AddModelError(string.Empty, "Không thể vừa là Admin vừa là Quản lý Địa điểm.");
+                    return View(user);
+                }
+
                 try
                 {
                     var userToUpdate = await _context.Users.FindAsync(id);
@@ -182,11 +249,33 @@ namespace BookingToursWeb.Controllers
                         return NotFound();
                     }
 
+                    // Kiểm tra xung đột ManagedLocationId (chỉ khi userToUpdate là LocationManager)
+                    if (user.IsLocationManager && user.ManagedLocationId.HasValue)
+                    {
+                        // Tìm xem có User khác đang quản lý Location này không
+                        var existingManager = await _context.Users
+                                                    .Where(u => u.ManagedLocationId == user.ManagedLocationId && u.IsLocationManager && u.Id != user.Id)
+                                                    .FirstOrDefaultAsync();
+                        if (existingManager != null)
+                        {
+                            ModelState.AddModelError("ManagedLocationId", $"Địa điểm này đã được quản lý bởi người dùng: {existingManager.Username}.");
+                            return View(user);
+                        }
+                    }
+                    // Nếu user.IsLocationManager là false, ManagedLocationId phải là null
+                    if (!user.IsLocationManager)
+                    {
+                        user.ManagedLocationId = null;
+                    }
+
                     userToUpdate.Username = user.Username;
                     userToUpdate.Email = user.Email;
                     userToUpdate.PhoneNumber = user.PhoneNumber;
                     userToUpdate.IsAdmin = user.IsAdmin;
+                    userToUpdate.IsLocationManager = user.IsLocationManager; // CẬP NHẬT TRƯỜNG MỚI
+                    userToUpdate.ManagedLocationId = user.ManagedLocationId; // CẬP NHẬT TRƯỜNG MỚI
 
+                    // Kiểm tra trùng lặp Username và Email
                     if (_context.Users.Any(u => u.Username == userToUpdate.Username && u.Id != userToUpdate.Id))
                     {
                         ModelState.AddModelError("Username", "Tên đăng nhập này đã tồn tại.");
@@ -245,6 +334,19 @@ namespace BookingToursWeb.Controllers
                 return RedirectToAction(nameof(ManageUsers));
             }
 
+            // Logic để hủy gán ManagedLocationId nếu người dùng này đang quản lý một địa điểm
+            // Vì ManagedLocationId là nullable và OnDelete(DeleteBehavior.Restrict) cho phép ManagedLocationId là null
+            // nên việc xóa User sẽ không ảnh hưởng đến Location.
+            // Nếu có dữ liệu liên quan khác (như Bookings, Reviews, Posts)
+            // thì cần cân nhắc hành vi xóa cascade hoặc xóa thủ công các bản ghi liên quan
+            // Hiện tại, cấu hình FK của bạn là Restrict, nên bạn phải đảm bảo không còn Booking/Review/Post nào của user này
+            // trước khi xóa user. Hoặc thay đổi DeleteBehavior trong DbContext nếu muốn xóa cascade.
+            // Ví dụ:
+            // if (user.Bookings.Any()) { _context.Bookings.RemoveRange(user.Bookings); }
+            // if (user.Reviews.Any()) { _context.Reviews.RemoveRange(user.Reviews); }
+            // if (user.Posts.Any()) { _context.Posts.RemoveRange(user.Posts); }
+            // -> Cần Include các Navigation Property này khi FindAsync(id) nếu bạn muốn xóa cascade.
+
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
 
@@ -259,13 +361,32 @@ namespace BookingToursWeb.Controllers
         // GET: Admin/ManageLocations (Hiển thị danh sách địa điểm)
         public async Task<IActionResult> ManageLocations()
         {
-            if (!IsCurrentUserAdmin())
+            // Cả Admin và LocationManager đều có thể xem danh sách địa điểm (nhưng LocationManager chỉ xem của mình)
+            if (!IsCurrentUserAdmin() && !IsCurrentUserLocationManager())
             {
                 TempData["ErrorMessage"] = "Bạn không có quyền truy cập trang quản lý địa điểm.";
                 return RedirectToAction("Index", "Home");
             }
+
             ViewData["Title"] = "Quản lý Địa điểm";
-            var locations = await _context.Locations.ToListAsync();
+            IQueryable<Location> locationsQuery = _context.Locations;
+
+            // Nếu là LocationManager, chỉ cho phép xem địa điểm mà họ quản lý
+            if (IsCurrentUserLocationManager())
+            {
+                var managedLocationId = GetCurrentManagedLocationId();
+                if (managedLocationId.HasValue)
+                {
+                    locationsQuery = locationsQuery.Where(l => l.Id == managedLocationId.Value);
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = "Bạn là quản lý địa điểm nhưng chưa được gán địa điểm nào.";
+                    return RedirectToAction("Index", "Home"); // Hoặc một trang lỗi khác
+                }
+            }
+            // Eager load LocationManagers để hiển thị manager của địa điểm (nếu có)
+            var locations = await locationsQuery.Include(l => l.LocationManagers).ToListAsync();
             return View(locations);
         }
 
@@ -273,40 +394,91 @@ namespace BookingToursWeb.Controllers
         [HttpGet]
         public IActionResult AddLocation()
         {
+            // Chỉ Admin tổng mới được thêm địa điểm
             if (!IsCurrentUserAdmin())
             {
                 TempData["ErrorMessage"] = "Bạn không có quyền thêm địa điểm mới.";
                 return RedirectToAction("Index", "Home");
             }
             ViewData["Title"] = "Thêm Địa điểm mới";
+
+            // Truyền danh sách người dùng có thể làm quản lý địa điểm
+            // Chỉ những người chưa là Admin và chưa là LocationManager của địa điểm khác
+            var potentialManagers = _context.Users
+                                        .Where(u => !u.IsAdmin && !(u.IsLocationManager && u.ManagedLocationId.HasValue))
+                                        .Select(u => new SelectListItem
+                                        {
+                                            Value = u.Id.ToString(),
+                                            Text = u.Username
+                                        }).ToList();
+            potentialManagers.Insert(0, new SelectListItem { Value = "", Text = "-- Chọn người quản lý (tùy chọn) --" });
+            ViewBag.PotentialManagers = potentialManagers;
+
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddLocation([Bind("Name,Description,Information,Address,TicketPrice,OpeningHours,ImageUrl,ContactInfo,IsActive,Latitude,Longitude")] Location location) // ĐÃ CẬP NHẬT Bind
+        // CẬP NHẬT [Bind] ĐỂ BAO GỒM CÁC CỘT THANH TOÁN VÀ MANAGERUSERID
+        public async Task<IActionResult> AddLocation([Bind("Name,Description,Information,Address,TicketPrice,OpeningHours,ImageUrl,ContactInfo,IsActive,Latitude,Longitude,BankName,BankAccountNumber,BankAccountName,PaymentInstructions")] Location location, int? ManagerUserId)
         {
+            // Chỉ Admin tổng mới được thực hiện hành động này
             if (!IsCurrentUserAdmin())
             {
                 TempData["ErrorMessage"] = "Bạn không có quyền thực hiện hành động này.";
                 return RedirectToAction("Index", "Home");
             }
 
+            ViewData["Title"] = "Thêm Địa điểm mới";
+
+            // Tải lại danh sách potentialManagers trong trường hợp ModelState không hợp lệ
+            var potentialManagers = _context.Users
+                                        .Where(u => !u.IsAdmin && !(u.IsLocationManager && u.ManagedLocationId.HasValue))
+                                        .Select(u => new SelectListItem
+                                        {
+                                            Value = u.Id.ToString(),
+                                            Text = u.Username
+                                        }).ToList();
+            potentialManagers.Insert(0, new SelectListItem { Value = "", Text = "-- Chọn người quản lý (tùy chọn) --" });
+            ViewBag.PotentialManagers = potentialManagers;
+
             if (ModelState.IsValid)
             {
                 if (await _context.Locations.AnyAsync(l => l.Name == location.Name))
                 {
                     ModelState.AddModelError("Name", "Tên địa điểm này đã tồn tại.");
-                    ViewData["Title"] = "Thêm Địa điểm mới";
                     return View(location);
                 }
 
                 _context.Add(location);
-                await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync(); // Lưu Location trước để có Id
+
+                // Nếu có ManagerUserId được chọn, cập nhật User đó
+                if (ManagerUserId.HasValue)
+                {
+                    var managerUser = await _context.Users.FindAsync(ManagerUserId.Value);
+                    if (managerUser != null)
+                    {
+                        // Kiểm tra xem user đã là quản lý của địa điểm khác chưa (hoặc là Admin)
+                        if (managerUser.IsAdmin || (managerUser.IsLocationManager && managerUser.ManagedLocationId.HasValue))
+                        {
+                            ModelState.AddModelError("ManagerUserId", $"Người dùng '{managerUser.Username}' đã là Admin hoặc là quản lý của một địa điểm khác. Vui lòng chọn người dùng khác.");
+                            // Cần xóa location vừa thêm để tránh dữ liệu rác
+                            _context.Locations.Remove(location);
+                            await _context.SaveChangesAsync();
+                            return View(location);
+                        }
+
+                        managerUser.IsLocationManager = true;
+                        managerUser.ManagedLocationId = location.Id; // Gán ID của địa điểm mới tạo
+                        _context.Users.Update(managerUser);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
                 TempData["SuccessMessage"] = "Địa điểm đã được thêm thành công!";
                 return RedirectToAction(nameof(ManageLocations));
             }
-            ViewData["Title"] = "Thêm Địa điểm mới";
             return View(location);
         }
 
@@ -314,7 +486,8 @@ namespace BookingToursWeb.Controllers
         [HttpGet]
         public async Task<IActionResult> EditLocation(int? id)
         {
-            if (!IsCurrentUserAdmin())
+            // Cả Admin và LocationManager đều có thể chỉnh sửa địa điểm của mình
+            if (!IsCurrentUserAdmin() && !IsCurrentUserLocationManager())
             {
                 TempData["ErrorMessage"] = "Bạn không có quyền chỉnh sửa địa điểm.";
                 return RedirectToAction("Index", "Home");
@@ -327,23 +500,74 @@ namespace BookingToursWeb.Controllers
                 return NotFound();
             }
 
-            var location = await _context.Locations.FindAsync(id);
+            IQueryable<Location> locationQuery = _context.Locations;
+
+            // Nếu là LocationManager, chỉ cho phép chỉnh sửa địa điểm mà họ quản lý
+            if (IsCurrentUserLocationManager())
+            {
+                var managedLocationId = GetCurrentManagedLocationId();
+                if (!managedLocationId.HasValue || managedLocationId.Value != id.Value)
+                {
+                    TempData["ErrorMessage"] = "Bạn không có quyền chỉnh sửa địa điểm này.";
+                    return RedirectToAction("ManageLocations"); // Chuyển hướng về trang quản lý địa điểm của họ
+                }
+            }
+
+            // Include LocationManagers để biết ai đang quản lý địa điểm này
+            var location = await locationQuery.Include(l => l.LocationManagers).FirstOrDefaultAsync(l => l.Id == id);
+
             if (location == null)
             {
                 return NotFound();
             }
+
+            // Lấy danh sách người dùng tiềm năng làm quản lý
+            // Bao gồm:
+            // 1. Những người chưa là Admin và chưa quản lý địa điểm nào
+            // 2. Người hiện tại đang là quản lý của địa điểm này (để vẫn hiển thị trong dropdown)
+            var currentManager = location.LocationManagers?.FirstOrDefault(u => u.IsLocationManager);
+            var currentManagerId = currentManager?.Id;
+
+
+            var potentialManagers = await _context.Users
+                                        .Where(u => (!u.IsAdmin && !(u.IsLocationManager && u.ManagedLocationId.HasValue)) || (u.Id == currentManagerId))
+                                        .Select(u => new SelectListItem
+                                        {
+                                            Value = u.Id.ToString(),
+                                            Text = u.Username
+                                        })
+                                        .ToListAsync();
+            potentialManagers.Insert(0, new SelectListItem { Value = "", Text = "-- Không gán quản lý --" });
+            ViewBag.PotentialManagers = potentialManagers;
+
+            // Gán ID của người quản lý hiện tại để chọn đúng trong dropdown
+            ViewBag.SelectedManagerId = currentManagerId;
+
             return View(location);
         }
 
         // POST: Admin/EditLocation/{id} (Xử lý sửa địa điểm)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditLocation(int id, [Bind("Id,Name,Description,Information,Address,TicketPrice,OpeningHours,ImageUrl,ContactInfo,IsActive,Latitude,Longitude")] Location location) // ĐÃ CẬP NHẬT Bind
+        // CẬP NHẬT [Bind] ĐỂ BAO GỒM CÁC CỘT THANH TOÁN VÀ MANAGERUSERID
+        public async Task<IActionResult> EditLocation(int id, [Bind("Id,Name,Description,Information,Address,TicketPrice,OpeningHours,ImageUrl,ContactInfo,IsActive,Latitude,Longitude,BankName,BankAccountNumber,BankAccountName,PaymentInstructions")] Location location, int? ManagerUserId)
         {
-            if (!IsCurrentUserAdmin())
+            // Cả Admin và LocationManager đều có thể chỉnh sửa địa điểm của mình
+            if (!IsCurrentUserAdmin() && !IsCurrentUserLocationManager())
             {
                 TempData["ErrorMessage"] = "Bạn không có quyền chỉnh sửa địa điểm.";
                 return RedirectToAction("Index", "Home");
+            }
+
+            // Nếu là LocationManager, chỉ cho phép chỉnh sửa địa điểm mà họ quản lý
+            if (IsCurrentUserLocationManager())
+            {
+                var managedLocationId = GetCurrentManagedLocationId();
+                if (!managedLocationId.HasValue || managedLocationId.Value != id)
+                {
+                    TempData["ErrorMessage"] = "Bạn không có quyền chỉnh sửa địa điểm này.";
+                    return RedirectToAction("ManageLocations");
+                }
             }
 
             ViewData["Title"] = "Sửa thông tin Địa điểm";
@@ -352,6 +576,24 @@ namespace BookingToursWeb.Controllers
             {
                 return NotFound();
             }
+
+            // Lấy thông tin quản lý hiện tại của địa điểm từ DB để tái tạo DropDownList nếu ModelState không hợp lệ
+            var locationCurrentInDb = await _context.Locations.Include(l => l.LocationManagers).AsNoTracking().FirstOrDefaultAsync(l => l.Id == id);
+            var currentManagerOnPost = locationCurrentInDb?.LocationManagers?.FirstOrDefault(u => u.IsLocationManager);
+            var currentManagerIdOnPost = currentManagerOnPost?.Id;
+
+            var potentialManagers = await _context.Users
+                                        .Where(u => (!u.IsAdmin && !(u.IsLocationManager && u.ManagedLocationId.HasValue)) || (u.Id == currentManagerIdOnPost))
+                                        .Select(u => new SelectListItem
+                                        {
+                                            Value = u.Id.ToString(),
+                                            Text = u.Username
+                                        })
+                                        .ToListAsync();
+            potentialManagers.Insert(0, new SelectListItem { Value = "", Text = "-- Không gán quản lý --" });
+            ViewBag.PotentialManagers = potentialManagers;
+            ViewBag.SelectedManagerId = ManagerUserId; // Giữ lại giá trị người dùng đã chọn
+
 
             if (ModelState.IsValid)
             {
@@ -364,9 +606,7 @@ namespace BookingToursWeb.Controllers
                     }
 
                     // Lấy đối tượng từ DB để đảm bảo chỉ cập nhật các thuộc tính được phép bởi [Bind]
-                    // Điều này an toàn hơn so với việc truyền trực tiếp 'location' vào _context.Update()
-                    // vì nó ngăn chặn tấn công over-posting.
-                    var locationToUpdate = await _context.Locations.AsNoTracking().FirstOrDefaultAsync(l => l.Id == id);
+                    var locationToUpdate = await _context.Locations.Include(l => l.LocationManagers).FirstOrDefaultAsync(l => l.Id == id);
                     if (locationToUpdate == null)
                     {
                         return NotFound();
@@ -382,12 +622,60 @@ namespace BookingToursWeb.Controllers
                     locationToUpdate.ImageUrl = location.ImageUrl;
                     locationToUpdate.ContactInfo = location.ContactInfo;
                     locationToUpdate.IsActive = location.IsActive;
-                    locationToUpdate.Latitude = location.Latitude; // CẬP NHẬT LATITUDE
-                    locationToUpdate.Longitude = location.Longitude; // CẬP NHẬT LONGITUDE
+                    locationToUpdate.Latitude = location.Latitude;
+                    locationToUpdate.Longitude = location.Longitude;
+                    // CẬP NHẬT CÁC CỘT THANH TOÁN MỚI
+                    locationToUpdate.BankName = location.BankName;
+                    locationToUpdate.BankAccountNumber = location.BankAccountNumber;
+                    locationToUpdate.BankAccountName = location.BankAccountName;
+                    locationToUpdate.PaymentInstructions = location.PaymentInstructions;
 
+                    // Xử lý việc gán/hủy gán quản lý địa điểm
+                    var oldManager = locationToUpdate.LocationManagers?.FirstOrDefault(u => u.IsLocationManager && u.ManagedLocationId == id); // Đảm bảo đúng địa điểm
 
-                    _context.Update(locationToUpdate);
-                    await _context.SaveChangesAsync();
+                    // Case 1: Gán quản lý mới (hoặc thay đổi quản lý)
+                    if (ManagerUserId.HasValue)
+                    {
+                        var newManager = await _context.Users.FindAsync(ManagerUserId.Value);
+                        if (newManager != null)
+                        {
+                            // Kiểm tra nếu người dùng mới đã là admin hoặc đang quản lý địa điểm khác
+                            if (newManager.IsAdmin || (newManager.IsLocationManager && newManager.ManagedLocationId.HasValue && newManager.ManagedLocationId.Value != id))
+                            {
+                                ModelState.AddModelError("ManagerUserId", $"Người dùng '{newManager.Username}' không thể được gán làm quản lý. Người dùng đó đã là Admin hoặc đang quản lý địa điểm khác.");
+                                // Để Model State hợp lệ cho View, cần detach locationToUpdate
+                                _context.Entry(locationToUpdate).State = EntityState.Detached; // Detach để tránh lỗi theo dõi
+                                return View(location);
+                            }
+
+                            // Nếu có quản lý cũ khác với quản lý mới, hủy gán quản lý cũ
+                            if (oldManager != null && oldManager.Id != newManager.Id)
+                            {
+                                oldManager.IsLocationManager = false;
+                                oldManager.ManagedLocationId = null;
+                                _context.Users.Update(oldManager);
+                            }
+
+                            // Gán quản lý mới
+                            newManager.IsLocationManager = true;
+                            newManager.ManagedLocationId = id;
+                            _context.Users.Update(newManager);
+                        }
+                    }
+                    // Case 2: Hủy gán quản lý (ManagerUserId is null)
+                    else
+                    {
+                        if (oldManager != null)
+                        {
+                            oldManager.IsLocationManager = false;
+                            oldManager.ManagedLocationId = null;
+                            _context.Users.Update(oldManager);
+                        }
+                    }
+
+                    _context.Update(locationToUpdate); // Cập nhật Location
+                    await _context.SaveChangesAsync(); // Lưu tất cả thay đổi (Location và User Managers)
+
                     TempData["SuccessMessage"] = "Cập nhật thông tin địa điểm thành công!";
                 }
                 catch (DbUpdateConcurrencyException)
@@ -401,7 +689,7 @@ namespace BookingToursWeb.Controllers
                         throw;
                     }
                 }
-                catch (Exception ex) // Bắt lỗi tổng quát hơn
+                catch (Exception ex)
                 {
                     _logger.LogError(ex, $"Lỗi khi cập nhật địa điểm ID: {id}");
                     ModelState.AddModelError(string.Empty, "Có lỗi xảy ra khi cập nhật địa điểm. Vui lòng thử lại.");
@@ -417,65 +705,99 @@ namespace BookingToursWeb.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteLocationConfirmed(int id)
         {
-            // ... (Phần kiểm tra quyền admin, Include Locations, Bookings, Reviews) ...
+            if (!IsCurrentUserAdmin()) // Chỉ Admin tổng mới được xóa địa điểm
+            {
+                TempData["ErrorMessage"] = "Bạn không có quyền xóa địa điểm.";
+                return RedirectToAction("Index", "Home");
+            }
 
+            // Eager load tất cả các mối quan hệ liên quan để xử lý trước khi xóa Location
             var location = await _context.Locations
                                         .Include(l => l.Bookings)
                                         .Include(l => l.Reviews)
-                                        .Include(l => l.PanoramaPoints) // Vẫn cần include PanoramaPoints
+                                        .Include(l => l.PanoramaPoints)
+                                        .Include(l => l.LocationManagers) // Thêm Include cho LocationManagers
                                         .FirstOrDefaultAsync(m => m.Id == id);
 
-            // Kiểm tra nếu location null
             if (location == null)
             {
                 TempData["ErrorMessage"] = "Không tìm thấy địa điểm cần xóa.";
-                return RedirectToAction(nameof(ManageLocations));
+                return NotFound();
             }
 
-            // Bước 1: Xóa các thư mục ảnh panorama con liên quan đến từng PanoramaPoint
-            var panoramaPoints = location.PanoramaPoints; // Gán vào biến cục bộ
-
-            if (panoramaPoints != null && panoramaPoints.Any()) // Kiểm tra null và rỗng trên biến cục bộ
+            // Hủy gán người quản lý địa điểm này nếu có
+            if (location.LocationManagers != null && location.LocationManagers.Any())
             {
-                foreach (var panoramaPoint in panoramaPoints) // Trình biên dịch giờ biết 'panoramaPoints' không null
+                foreach (var manager in location.LocationManagers)
                 {
-                    var relativeImageUrl = panoramaPoint.ImageUrl; // panoramaPoint.ImageUrl có thể là string?
+                    // Chỉ hủy gán nếu họ thực sự đang quản lý địa điểm này
+                    if (manager.ManagedLocationId == id && manager.IsLocationManager)
+                    {
+                        manager.IsLocationManager = false;
+                        manager.ManagedLocationId = null;
+                        _context.Users.Update(manager);
+                    }
+                }
+            }
+
+
+            // Bước 1: Xóa các thư mục ảnh panorama con liên quan đến từng PanoramaPoint
+            var panoramaPoints = location.PanoramaPoints;
+
+            if (panoramaPoints != null && panoramaPoints.Any())
+            {
+                foreach (var panoramaPoint in panoramaPoints)
+                {
+                    var relativeImageUrl = panoramaPoint.ImageUrl;
 
                     if (!string.IsNullOrEmpty(relativeImageUrl))
                     {
-                        // fullPhysicalPathFromDb sẽ không null vì relativeImageUrl không null
                         string fullPhysicalPathFromDb = Path.Combine(_webHostEnvironment.WebRootPath, relativeImageUrl.TrimStart('/'));
-
-                        // panoramaPointFolderPath có thể là null nếu fullPhysicalPathFromDb là gốc hoặc không hợp lệ
-                        string? panoramaPointFolderPath = Path.GetDirectoryName(fullPhysicalPathFromDb); // Đã sửa cảnh báo Conversion of null to non-nullable
+                        string? panoramaPointFolderPath = Path.GetDirectoryName(fullPhysicalPathFromDb);
 
                         if (!string.IsNullOrEmpty(panoramaPointFolderPath) && Directory.Exists(panoramaPointFolderPath))
                         {
-                            Directory.Delete(panoramaPointFolderPath, true); // Xóa toàn bộ thư mục và nội dung bên trong
-                            Console.WriteLine($"Đã xóa thư mục panorama: {panoramaPointFolderPath}");
+                            try
+                            {
+                                Directory.Delete(panoramaPointFolderPath, true); // Xóa toàn bộ thư mục và nội dung bên trong
+                                _logger.LogInformation($"Đã xóa thư mục panorama: {panoramaPointFolderPath}");
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, $"Lỗi khi xóa thư mục panorama {panoramaPointFolderPath} cho điểm {panoramaPoint.Id}.");
+                                // Không ném lỗi để tiếp tục xóa các thành phần khác
+                            }
                         }
                     }
                 }
             }
 
             // Bước 2: Xóa thư mục gốc của địa điểm nếu nó tồn tại và trống
-            // Thư mục này là E:\BookingToursWeb\wwwroot\images\panoramas\{LocationId}
-            string locationRootFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "panoramas", location.Id.ToString());
+            string locationRootFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "panoramas", id.ToString()); // Dùng id trực tiếp
             if (Directory.Exists(locationRootFolder))
             {
-                // Kiểm tra xem nó có rỗng không trước khi xóa, để tránh xóa nhầm dữ liệu không liên quan
-                if (!Directory.EnumerateFileSystemEntries(locationRootFolder).Any())
+                try
                 {
-                    Directory.Delete(locationRootFolder, false); // false vì đã kiểm tra rỗng
-                    Console.WriteLine($"Đã xóa thư mục địa điểm gốc rỗng: {locationRootFolder}");
+                    // Kiểm tra xem nó có rỗng không trước khi xóa, để tránh xóa nhầm dữ liệu không liên quan
+                    if (!Directory.EnumerateFileSystemEntries(locationRootFolder).Any())
+                    {
+                        Directory.Delete(locationRootFolder, false); // false vì đã kiểm tra rỗng
+                        _logger.LogInformation($"Đã xóa thư mục địa điểm gốc rỗng: {locationRootFolder}");
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Thư mục địa điểm gốc '{locationRootFolder}' không rỗng, không xóa tự động (cần kiểm tra thủ công).");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"Thư mục địa điểm gốc '{locationRootFolder}' không rỗng, không xóa tự động.");
+                    _logger.LogError(ex, $"Lỗi khi xóa thư mục gốc địa điểm {locationRootFolder}.");
                 }
             }
 
             // Bước 3: Xóa Location và các Bookings, Reviews, PanoramaPoints khỏi database
+            // Vì các mối quan hệ được cấu hình là DeleteBehavior.Restrict, bạn phải xóa các bản ghi con trước.
+            // Đoạn code dưới đây đã làm điều này bằng cách RemoveRange các collections.
             if (location.Bookings != null && location.Bookings.Any())
             {
                 _context.Bookings.RemoveRange(location.Bookings);
@@ -486,7 +808,6 @@ namespace BookingToursWeb.Controllers
                 _context.Reviews.RemoveRange(location.Reviews);
             }
 
-            // Dòng này cũng được hưởng lợi từ việc kiểm tra null rõ ràng
             if (location.PanoramaPoints != null && location.PanoramaPoints.Any())
             {
                 _context.PanoramaPoints.RemoveRange(location.PanoramaPoints);
@@ -494,6 +815,7 @@ namespace BookingToursWeb.Controllers
 
             _context.Locations.Remove(location);
 
+            // Lưu tất cả các thay đổi vào database
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Địa điểm và tất cả dữ liệu liên quan đã được xóa thành công.";
