@@ -8,13 +8,13 @@ namespace BookingToursWeb.Models // <-- DÒNG NÀY PHẢI CHÍNH XÁC LÀ "Booki
 
     public class PostManagementViewModel
     {
-        public IEnumerable<CategoryWithPosts> CategoriesWithPosts { get; set; }
+        public required IEnumerable<CategoryWithPosts> CategoriesWithPosts { get; set; }
     }
 
     public class CategoryWithPosts
     {
         public int CategoryId { get; set; }
-        public string CategoryName { get; set; }
-        public IEnumerable<Post> Posts { get; set; }
+        public required string CategoryName { get; set; }
+        public required IEnumerable<Post> Posts { get; set; }
     }
 }

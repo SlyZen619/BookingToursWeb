@@ -27,13 +27,20 @@ namespace BookingToursWeb.Models
         [Compare("Password", ErrorMessage = "Mật khẩu và xác nhận mật khẩu không khớp.")]
         public required string ConfirmPassword { get; set; }
 
-        [Required(ErrorMessage = "Số điện thoại là bắt buộc là bắt buộc.")]
+        // Đã thay đổi PhoneNumber từ required string sang string? (nullable) để đồng bộ với User model
+        // Nếu bạn muốn nó Required, hãy giữ nguyên Required attribute và bỏ '?'
+        [Required(ErrorMessage = "Số điện thoại là bắt buộc.")] // Giữ nguyên Required nếu bạn muốn Phone Number là bắt buộc
         [StringLength(20, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
         [Phone(ErrorMessage = "Số điện thoại không hợp lệ.")]
         [Display(Name = "Số điện thoại")]
-        public required string PhoneNumber { get; set; }
+        public string? PhoneNumber { get; set; } // Đã sửa thành nullable để phù hợp với User model và tính linh hoạt
 
         [Display(Name = "Là Quản trị viên")]
         public bool IsAdmin { get; set; } = false; // Mặc định không phải Admin, Admin có thể tích chọn
+
+        // === THÊM THUỘC TÍNH MỚI CHO LOCATION MANAGER ===
+        [Display(Name = "Là Quản lý Địa điểm")]
+        public bool IsLocationManager { get; set; } = false; // Mặc định không phải Quản lý Địa điểm
+        // === HẾT THÊM ===
     }
 }
