@@ -4,6 +4,7 @@ using BookingToursWeb.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BookingToursWeb.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250714033842_AddVNPayFieldsToBookings")]
+    partial class AddVNPayFieldsToBookings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -43,6 +46,10 @@ namespace BookingToursWeb.Migrations
                     b.Property<int>("NumberOfVisitors")
                         .HasColumnType("int");
 
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("SpecialNotes")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -60,6 +67,29 @@ namespace BookingToursWeb.Migrations
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
+
+                    b.Property<string>("VNPayBankCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("VNPayOrderInfo")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime?>("VNPayPayDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("VNPayResponseCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("VNPayTransactionStatus")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("VNPayTxnRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
@@ -101,18 +131,6 @@ namespace BookingToursWeb.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("BankAccountName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("BankAccountNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("BankName")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.Property<string>("ContactInfo")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -150,9 +168,6 @@ namespace BookingToursWeb.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("PaymentInstructions")
-                        .HasColumnType("nvarchar(MAX)");
 
                     b.Property<decimal?>("TicketPrice")
                         .HasColumnType("decimal(18, 2)");
@@ -290,12 +305,6 @@ namespace BookingToursWeb.Migrations
                     b.Property<bool>("IsAdmin")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsLocationManager")
-                        .HasColumnType("bit");
-
-                    b.Property<int?>("ManagedLocationId")
-                        .HasColumnType("int");
-
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -314,8 +323,6 @@ namespace BookingToursWeb.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique();
-
-                    b.HasIndex("ManagedLocationId");
 
                     b.HasIndex("Username")
                         .IsUnique();
@@ -391,16 +398,6 @@ namespace BookingToursWeb.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("BookingToursWeb.Models.User", b =>
-                {
-                    b.HasOne("BookingToursWeb.Models.Location", "ManagedLocation")
-                        .WithMany("LocationManagers")
-                        .HasForeignKey("ManagedLocationId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("ManagedLocation");
-                });
-
             modelBuilder.Entity("BookingToursWeb.Models.Category", b =>
                 {
                     b.Navigation("Posts");
@@ -409,8 +406,6 @@ namespace BookingToursWeb.Migrations
             modelBuilder.Entity("BookingToursWeb.Models.Location", b =>
                 {
                     b.Navigation("Bookings");
-
-                    b.Navigation("LocationManagers");
 
                     b.Navigation("PanoramaPoints");
 
