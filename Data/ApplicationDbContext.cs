@@ -17,9 +17,7 @@ namespace BookingToursWeb.Data
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Post> Posts { get; set; }
         public DbSet<PanoramaPoint> PanoramaPoints { get; set; }
-        // === THÊM DbSet CHO CATEGORY ===
         public DbSet<Category> Categories { get; set; }
-        // === HẾT THÊM ===
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -31,10 +29,6 @@ namespace BookingToursWeb.Data
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
-
-            // =====================================================================
-            // Cấu hình các mối quan hệ tường minh (CẬP NHẬT LẠI ĐÂY)
-            // =====================================================================
 
             // Mối quan hệ Booking - User (Many-to-One: Bookings to User)
             modelBuilder.Entity<Booking>()
@@ -71,15 +65,21 @@ namespace BookingToursWeb.Data
                 .HasForeignKey(p => p.AuthorId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // === THÊM CẤU HÌNH MỐI QUAN HỆ POST - CATEGORY ===
-            // Một Post có một Category (Many-to-One: Posts to Category)
-            // Một Category có nhiều Posts.
+            // Cấu hình mối quan hệ Post - Category
             modelBuilder.Entity<Post>()
-                .HasOne(p => p.Category) // Post có một Category
-                .WithMany(c => c.Posts) // Category có nhiều Posts
-                .HasForeignKey(p => p.CategoryId) // CategoryId là khóa ngoại trong Posts
-                .OnDelete(DeleteBehavior.Restrict); // Ngăn không cho xóa Category nếu có Posts liên quan
-            // === HẾT THÊM ===
+                .HasOne(p => p.Category)
+                .WithMany(c => c.Posts)
+                .HasForeignKey(p => p.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // === CẤU HÌNH MỐI QUAN HỆ USER - LOCATION (CHO QUẢN LÝ ĐỊA ĐIỂM) ===
+            // Một User có thể quản lý một Location (thông qua ManagedLocationId)
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.ManagedLocation)
+                .WithMany(l => l.LocationManagers) // Thêm thuộc tính điều hướng ngược lại trong Location
+                .HasForeignKey(u => u.ManagedLocationId)
+                .IsRequired(false) // ManagedLocationId có thể NULL
+                .OnDelete(DeleteBehavior.Restrict); // Tránh xóa cascade
 
             base.OnModelCreating(modelBuilder);
         }
