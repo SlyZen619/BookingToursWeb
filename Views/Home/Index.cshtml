@@ -15,7 +15,7 @@
         @foreach (var place in Model.FamousPlaces)
         {
             <div class="col-md-4 mb-4">
-                <div class="card shadow-sm">
+                <div class="card shadow-sm h-100">
                     @if (!string.IsNullOrEmpty(place.ImageUrl))
                     {
                         <img src="@place.ImageUrl" class="card-img-top" alt="@place.Name" style="height: 200px; object-fit: cover;">
@@ -24,23 +24,25 @@
                     {
                         <img src="https://via.placeholder.com/400x200?text=No+Image" class="card-img-top" alt="No Image" style="height: 200px; object-fit: cover;">
                     }
-                    <div class="card-body">
+                    <div class="card-body d-flex flex-column">
                         <h5 class="card-title">@place.Name</h5>
-                        <p class="card-text text-muted">@place.Description</p>
-                        <a asp-controller="Home" asp-action="PlaceDetails" asp-route-id="@place.Id" class="btn btn-outline-primary mt-3">Khám phá</a>
+                        <p class="card-text text-muted flex-grow-1 limited-description">@place.Description</p>
+                        <div class="mt-auto">
+                            <a asp-controller="Home" asp-action="PlaceDetails" asp-route-id="@place.Id" class="btn btn-outline-primary mt-3">Khám phá</a>
 
-                        @* Chỉ giữ lại một nút để mở modal bản đồ *@
-                        @if (place.Latitude.HasValue && place.Longitude.HasValue)
-                        {
-                            <button type="button" class="btn btn-outline-info mt-3 map-button"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#mapModal"
-                                    data-latitude="@(place.Latitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))"
-                                    data-longitude="@(place.Longitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))"
-                                    data-placename="@place.Name">
-                                <i class="fas fa-map-marker-alt"></i> Xem trên Bản đồ
-                            </button>
-                        }
+                            @* Chỉ giữ lại một nút để mở modal bản đồ *@ 
+                                    @if (place.Latitude.HasValue && place.Longitude.HasValue)
+                            {
+                                <button type="button" class="btn btn-outline-info mt-3 map-button"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#mapModal"
+                                        data-latitude="@(place.Latitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                                        data-longitude="@(place.Longitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                                        data-placename="@place.Name">
+                                    <i class="fas fa-map-marker-alt"></i> Xem trên Bản đồ
+                                </button>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
@@ -77,7 +79,41 @@
 </div>
 
 @section Scripts {
+    <style>
+        /* CHỈNH SỬA DUY NHẤT Ở ĐÂY CHO ĐỘ BO GÓC CỦA CARD */
+        .card.h-100 {
+            height: 100%;
+            border-radius: 15px; /* Đặt giá trị bo góc mong muốn của bạn tại đây */
+            overflow: hidden; /* Quan trọng để nội dung bên trong (ảnh) không bị tràn ra ngoài góc bo tròn */
+        }
+
+        /* Đảm bảo ảnh phía trên card tự động bo tròn theo card cha */
+        .card-img-top {
+            border-top-left-radius: inherit; /* Thừa hưởng border-radius từ .card.h-100 */
+            border-top-right-radius: inherit; /* Thừa hưởng border-radius từ .card.h-100 */
+        }
+
+        /* Các kiểu CSS khác giữ nguyên để làm đều chiều cao card */
+        .card-body.d-flex.flex-column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-text.limited-description {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-height: 4.5em;
+        }
+
+        .mt-auto {
+            margin-top: auto !important;
+        }
+    </style>
     <script>
+
         let leafletMap;
         let leafletMarker;
         let routingControl;

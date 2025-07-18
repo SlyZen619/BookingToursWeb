@@ -1,0 +1,10 @@
+﻿@{
+    ViewData["Title"] = "Giao diện Quản lý Địa điểm";
+    Layout = "~/Views/Shared/_LocationManagerLayout.cshtml"; // Đảm bảo layout được sử dụng
+}
+
+<div class="text-center mt-5">
+    <h1>Giao diện Quản lý Địa điểm</h1>
+    <p class="lead">Chào mừng bạn đến với khu vực quản lý địa điểm!</p>
+    <p>Bạn đang quản lý địa điểm: <strong>@Context.Session.GetString("ManagedLocationName")</strong></p>
+</div>
